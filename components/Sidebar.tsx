@@ -20,13 +20,20 @@ import NavItem from './NavItem';
 interface SidebarProps {
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
-  accentColor: string;
+  role: 'admin' | 'nurse';
 }
 
-export default function Sidebar({ isSidebarOpen, toggleSidebar, accentColor }: SidebarProps) {
+const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, toggleSidebar, role }) => {
   const pathname = usePathname();
 
-  const navItems = [
+  // Define navigation items based on role
+  const adminNavItems = [
+    { label: 'Dashboard', icon: <Home size={20} />, href: '/admin/dashboard' },
+    { label: 'Settings', icon: <Settings size={20} />, href: '/settings' },
+    { label: 'Support', icon: <FileText size={20} />, href: '/support' },
+  ];
+
+  const nurseNavItems = [
     { label: 'Dashboard', icon: <Home size={20} />, href: '/' },
     { label: 'Job Matches', icon: <Briefcase size={20} />, href: '/job-matches' },
     { label: 'Job Search', icon: <Search size={20} />, href: '/job-search' },
@@ -35,8 +42,9 @@ export default function Sidebar({ isSidebarOpen, toggleSidebar, accentColor }: S
     { label: 'Messages', icon: <MessageSquare size={20} />, href: '/messages' },
     { label: 'Profile', icon: <User size={20} />, href: '/profile' },
     { label: 'Settings', icon: <Settings size={20} />, href: '/settings' },
-    { label: 'Support', icon: <FileText size={20} />, href: '/support' },
   ];
+
+  const navItems = role === 'admin' ? adminNavItems : nurseNavItems;
 
   return (
     <aside
@@ -44,6 +52,14 @@ export default function Sidebar({ isSidebarOpen, toggleSidebar, accentColor }: S
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
       } md:translate-x-0 md:static md:inset-0 z-30 w-64`}
     >
+      {/* Close button for mobile view */}
+      <button
+        onClick={toggleSidebar}
+        className="md:hidden absolute top-4 right-4 text-gray-600 hover:text-gray-800"
+      >
+        ✕
+      </button>
+
       <div className="p-4">
         <img src="/logo.svg" alt="Logo" className="h-8 w-auto" />
       </div>
@@ -61,4 +77,6 @@ export default function Sidebar({ isSidebarOpen, toggleSidebar, accentColor }: S
       </nav>
     </aside>
   );
-}
+};
+
+export default Sidebar;

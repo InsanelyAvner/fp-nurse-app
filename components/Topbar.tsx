@@ -1,9 +1,9 @@
-// components/Topbar.js
+// components/Topbar.tsx
 
 'use client'
 
 import React from 'react'
-import { Bell, LogOut, Mail, Menu, Settings, User } from 'lucide-react'
+import { Bell, LogOut, Mail, Settings, User, Menu } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,53 +15,69 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-export default function Topbar({ toggleSidebar }) {
+interface TopbarProps {
+  role: 'admin' | 'nurse';
+  toggleSidebar: () => void;
+}
+
+const Topbar: React.FC<TopbarProps> = ({ role, toggleSidebar }) => {
   return (
     <header className="bg-white shadow-sm z-10">
       <div className="flex justify-between items-center py-4 px-4 sm:px-6 lg:px-8">
+        
+        {/* Sidebar Toggle and Title */}
         <div className="flex items-center">
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
+            className="mr-3 md:hidden"
             onClick={toggleSidebar}
-            className="text-gray-500 hover:text-gray-700 md:hidden"
           >
             <Menu size={24} />
-          </button>
-          <h1 className="text-xl font-semibold text-gray-900 ml-4 md:ml-0">
-            Dashboard
+          </Button>
+          <h1 className="text-xl font-semibold text-gray-900">
+            {role === 'admin' ? 'Admin Dashboard' : 'Nurse Dashboard'}
           </h1>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="icon" className="relative mr-2">
+
+        {/* Notifications, Messages, and User Dropdown */}
+        <div className="flex items-center space-x-4">
+          {/* Notifications */}
+          <Button variant="ghost" size="icon" className="relative">
             <Bell size={20} />
             <span className="sr-only">Notifications</span>
-            <span className="absolute top-0 right-0 h-4 w-4 rounded-full bg-[#9d2235] text-[10px] font-medium text-white flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#9d2235] text-xs font-semibold text-white flex items-center justify-center">
               3
             </span>
           </Button>
-          <Button variant="ghost" size="icon" className="relative mr-4">
+
+          {/* Messages */}
+          <Button variant="ghost" size="icon" className="relative">
             <Mail size={20} />
             <span className="sr-only">Messages</span>
-            <span className="absolute top-0 right-0 h-4 w-4 rounded-full bg-[#9d2235] text-[10px] font-medium text-white flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#9d2235] text-xs font-semibold text-white flex items-center justify-center">
               2
             </span>
           </Button>
+
+          {/* User Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src="/avatar.png" alt="Sarah Johnson" />
-                  <AvatarFallback>SJ</AvatarFallback>
+                  <AvatarImage src="/avatar.png" alt="User Avatar" />
+                  <AvatarFallback>US</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    Sarah Johnson
+                  <p className="text-sm font-semibold leading-none">
+                    John Doe
                   </p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    sarah.johnson@example.com
+                  <p className="text-xs leading-none text-gray-500">
+                    john.doe@example.com
                   </p>
                 </div>
               </DropdownMenuLabel>
@@ -76,7 +92,7 @@ export default function Topbar({ toggleSidebar }) {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
-                <LogOut className="mr-2 h-4 w-4" />
+                <LogOut className="mr-2 h-4 w-4 text-red-500" />
                 <span>Log out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -86,3 +102,5 @@ export default function Topbar({ toggleSidebar }) {
     </header>
   )
 }
+
+export default Topbar

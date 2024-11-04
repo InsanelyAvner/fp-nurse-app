@@ -272,7 +272,7 @@ const NurseDashboardComponent: React.FC = () => {
                     {upcomingShifts.map((shift) => (
                       <div key={shift.id} className="mb-4 last:mb-0">
                         <p className="text-sm font-medium">{shift.facility}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-grays-500">
                           {shift.date} • {shift.time}
                         </p>
                       </div>

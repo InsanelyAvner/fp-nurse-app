@@ -23,6 +23,7 @@ interface Job {
   payRate: string;
   urgent: boolean;
   requiredSkills: string[];
+  matchingScore: number;
 }
 
 interface Notification {
@@ -145,7 +146,7 @@ const NurseDashboardComponent: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
-      <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} accentColor="#9d2235" />
+      <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} role="nurse" />
 
       {/* Overlay for mobile sidebar */}
       {isSidebarOpen && (
@@ -157,7 +158,7 @@ const NurseDashboardComponent: React.FC = () => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Topbar toggleSidebar={toggleSidebar} accentColor="#9d2235" />
+        <Topbar toggleSidebar={toggleSidebar} role="nurse" />
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto bg-gray-100 p-4">

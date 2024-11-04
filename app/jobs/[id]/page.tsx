@@ -88,7 +88,7 @@ const JobDetailsPageComponent: React.FC = () => {
   useEffect(() => {
     // Fetch job data based on ID
     // For now, we'll use the sample data
-    const jobData = jobListings.find((job) => job.id === parseInt(id));
+    const jobData = jobListings.find((job) => job.id === parseInt(id as string));
     setJob(jobData);
   }, [id]);
 
@@ -111,13 +111,13 @@ const JobDetailsPageComponent: React.FC = () => {
       <Sidebar
         isSidebarOpen={false}
         toggleSidebar={toggleSidebar}
-        accentColor="#9d2235"
+        role="nurse"
       />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Topbar */}
-        <Topbar toggleSidebar={toggleSidebar} accentColor="#9d2235" />
+        <Topbar toggleSidebar={toggleSidebar} role="nurse" />
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto">

@@ -138,7 +138,7 @@ const NurseProfilePageComponent: React.FC = () => {
       <Sidebar
         isSidebarOpen={isSidebarOpen}
         toggleSidebar={toggleSidebar}
-        accentColor="#9d2235"
+        role="nurse"
       />
 
       {/* Overlay for mobile sidebar */}
@@ -152,7 +152,7 @@ const NurseProfilePageComponent: React.FC = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Topbar */}
-        <Topbar toggleSidebar={toggleSidebar} accentColor="#9d2235" />
+        <Topbar toggleSidebar={toggleSidebar} role='nurse' />
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto p-6">

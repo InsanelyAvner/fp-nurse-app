@@ -1,30 +1,25 @@
 // JobSearchPageComponent.tsx
 
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Topbar from '@/components/Topbar';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import React, { useState } from "react";
+import Sidebar from "@/components/Sidebar";
+import Topbar from "@/components/Topbar";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import JobCard from '@/components/JobCard';
-import { Pagination } from '@/components/Pagination';
-import { Search } from 'lucide-react';
-import { Label } from '@/components/ui/label';
-import { useRouter } from 'next/navigation';
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import JobCard from "@/components/JobCard";
+import { Pagination } from "@/components/Pagination";
+import { Search } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { useRouter } from "next/navigation";
 
 interface Job {
   id: number;
@@ -42,24 +37,24 @@ interface Job {
 const jobListings: Job[] = [
   {
     id: 1,
-    title: 'Registered Nurse - ICU',
-    facility: 'Farrer Park Hospital',
-    date: '2023-10-15',
-    time: '07:00 - 19:00',
-    payRate: '$50/hour',
+    title: "Registered Nurse - ICU",
+    facility: "Farrer Park Hospital",
+    date: "2023-10-15",
+    time: "07:00 - 19:00",
+    payRate: "$50/hour",
     urgent: true,
-    requiredSkills: ['ICU', 'Critical Care'],
-    shiftType: 'Day Shift',
-    department: 'Intensive Care Unit',
+    requiredSkills: ["ICU", "Critical Care"],
+    shiftType: "Day Shift",
+    department: "Intensive Care Unit",
   },
   // Add more job listings...
 ];
 
 const JobSearchPageComponent: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedShift, setSelectedShift] = useState('all');
-  const [selectedDepartment, setSelectedDepartment] = useState('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedShift, setSelectedShift] = useState("all");
+  const [selectedDepartment, setSelectedDepartment] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
 
   const jobsPerPage = 9;
@@ -73,9 +68,9 @@ const JobSearchPageComponent: React.FC = () => {
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
     const matchesShift =
-      selectedShift === 'all' || job.shiftType === selectedShift;
+      selectedShift === "all" || job.shiftType === selectedShift;
     const matchesDepartment =
-      selectedDepartment === 'all' || job.department === selectedDepartment;
+      selectedDepartment === "all" || job.department === selectedDepartment;
     return matchesSearch && matchesShift && matchesDepartment;
   });
 
@@ -87,7 +82,7 @@ const JobSearchPageComponent: React.FC = () => {
 
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Define the onViewDetails function
@@ -101,20 +96,20 @@ const JobSearchPageComponent: React.FC = () => {
       <Sidebar
         isSidebarOpen={isSidebarOpen}
         toggleSidebar={toggleSidebar}
-        accentColor="#9d2235"
+        role="nurse"
       />
 
-      {/* Overlay */}
+      {/* Overlay for mobile sidebar */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-20 md:hidden"
+          className="fixed inset-0 bg-black opacity-50 z-20 md:hidden"
           onClick={toggleSidebar}
         ></div>
       )}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Topbar toggleSidebar={toggleSidebar} accentColor="#9d2235" />
+        <Topbar toggleSidebar={toggleSidebar} role="nurse" />
 
         <main className="flex-1 overflow-y-auto">
           {/* Hero Section */}
@@ -135,7 +130,8 @@ const JobSearchPageComponent: React.FC = () => {
                   Discover Jobs
                 </h1>
                 <p className="text-lg md:text-xl text-gray-200 mt-4 max-w-2xl">
-                  Explore thousands of jobs that match your skills and preferences.
+                  Explore thousands of jobs that match your skills and
+                  preferences.
                 </p>
               </div>
 
@@ -145,7 +141,10 @@ const JobSearchPageComponent: React.FC = () => {
                   <div className="space-y-6">
                     {/* Search Input */}
                     <div className="w-full">
-                      <Label htmlFor="search" className="text-gray-700 font-semibold">
+                      <Label
+                        htmlFor="search"
+                        className="text-gray-700 font-semibold"
+                      >
                         Search Jobs
                       </Label>
                       <div className="relative mt-2">
@@ -167,7 +166,10 @@ const JobSearchPageComponent: React.FC = () => {
                     {/* Filters Row */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                       <div>
-                        <Label htmlFor="shiftType" className="text-gray-700 font-semibold">
+                        <Label
+                          htmlFor="shiftType"
+                          className="text-gray-700 font-semibold"
+                        >
                           Shift Type
                         </Label>
                         <Select
@@ -180,17 +182,24 @@ const JobSearchPageComponent: React.FC = () => {
                           <SelectContent>
                             <SelectItem value="all">All Shifts</SelectItem>
                             <SelectItem value="Day Shift">Day Shift</SelectItem>
-                            <SelectItem value="Night Shift">Night Shift</SelectItem>
+                            <SelectItem value="Night Shift">
+                              Night Shift
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
 
                       <div>
-                        <Label htmlFor="department" className="text-gray-700 font-semibold">
+                        <Label
+                          htmlFor="department"
+                          className="text-gray-700 font-semibold"
+                        >
                           Department
                         </Label>
                         <Select
-                          onValueChange={(value) => setSelectedDepartment(value)}
+                          onValueChange={(value) =>
+                            setSelectedDepartment(value)
+                          }
                           defaultValue="all"
                         >
                           <SelectTrigger className="mt-2">
@@ -198,12 +207,20 @@ const JobSearchPageComponent: React.FC = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Departments</SelectItem>
-                            <SelectItem value="Intensive Care Unit">Intensive Care Unit</SelectItem>
-                            <SelectItem value="Emergency Room">Emergency Room</SelectItem>
-                            <SelectItem value="Pediatrics">Pediatrics</SelectItem>
+                            <SelectItem value="Intensive Care Unit">
+                              Intensive Care Unit
+                            </SelectItem>
+                            <SelectItem value="Emergency Room">
+                              Emergency Room
+                            </SelectItem>
+                            <SelectItem value="Pediatrics">
+                              Pediatrics
+                            </SelectItem>
                             <SelectItem value="Surgical">Surgical</SelectItem>
                             <SelectItem value="Oncology">Oncology</SelectItem>
-                            <SelectItem value="Geriatrics">Geriatrics</SelectItem>
+                            <SelectItem value="Geriatrics">
+                              Geriatrics
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -211,9 +228,9 @@ const JobSearchPageComponent: React.FC = () => {
                       <div className="flex justify-end">
                         <Button
                           onClick={() => {
-                            setSearchQuery('');
-                            setSelectedShift('all');
-                            setSelectedDepartment('all');
+                            setSearchQuery("");
+                            setSelectedShift("all");
+                            setSelectedDepartment("all");
                           }}
                           variant="secondary"
                           className="w-full md:w-auto"
@@ -233,14 +250,19 @@ const JobSearchPageComponent: React.FC = () => {
             {currentJobs.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
                 {currentJobs.map((job) => (
-                  <JobCard key={job.id} job={job} onViewDetails={onViewDetails} />
+                  <JobCard
+                    key={job.id}
+                    job={job}
+                    onViewDetails={onViewDetails}
+                  />
                 ))}
               </div>
             ) : (
               <div className="text-center py-16 bg-white rounded-lg shadow-sm">
                 <p className="text-2xl text-gray-600">No jobs found.</p>
                 <p className="text-gray-500 mt-2">
-                  Try adjusting your search or filters to find what you're looking for.
+                  Try adjusting your search or filters to find what you're
+                  looking for.
                 </p>
               </div>
             )}

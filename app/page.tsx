@@ -138,6 +138,17 @@ const NurseDashboardComponent: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    const checkAuth = async () => {
+      const response = await fetch('/api/auth/validateToken')
+      if (!response.ok) {
+        router.push('/login')
+      }
+    }
+
+    checkAuth()
+  }, [router])
+
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   const handleViewDetails = (jobId: number) => {

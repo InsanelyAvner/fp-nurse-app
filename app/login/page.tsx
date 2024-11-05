@@ -14,6 +14,7 @@ import Image from 'next/image'
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
 
@@ -21,18 +22,28 @@ export default function Login() {
     e.preventDefault()
     setError('')
 
-    const result = await signIn('credentials', {
-      redirect: false,
-      email,
-      password,
-    })
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password, rememberMe }),
+      })
 
-    if (result?.error) {
-      setError('Invalid email or password')
-    } else {
-      router.push('/dashboard')
+      const result = await response.json()
+
+      if (!response.ok) {
+        setError(result.error || 'An unexpected error occurred')
+      } else {
+        router.push('/')
+      }
+    } catch (error) {
+      console.error('Login failed:', error)
+      setError('An error occurred while logging in')
     }
   }
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -75,6 +86,8 @@ export default function Login() {
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
                   className="h-4 w-4 text-[#9d2235] focus:ring-[#9d2235] border-gray-300 rounded"
                 />
                 <Label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
@@ -103,7 +116,7 @@ export default function Login() {
         <CardFooter className="flex flex-col space-y-2">
           <div className="text-sm text-center text-gray-500">
             Don't have an account?{' '}
-            <Button variant="link" className="p-0 text-[#9d2235]" onClick={() => router.push('/register')}>
+            <Button variant="link" className="p-0 text-[#9d2235]" onClick={() => router.push('/signup')}>
               Sign up
             </Button>
           </div>

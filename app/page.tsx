@@ -49,7 +49,8 @@ const jobMatches: Job[] = [
     payRate: "$45/hr",
     urgent: true,
     matchingScore: 92,
-    requiredSkills: ["Critical Care", "Advanced Life Support"],
+    requiredSkills: ["Critical Care", "Advanced Life Support", "test1", "test2", "test3", "test4", "test5", "test6", "test7", "test8", "test9", "test10", "test11", "test12", "test13", "test14"],
+    // This is for testing how it reacts to long elements.
   },
   {
     id: 2,
@@ -237,7 +238,7 @@ const NurseDashboardComponent: React.FC = () => {
                 <CardTitle>Recommended Jobs for You</CardTitle>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="h-[300px]">
+                <ScrollArea className="h-[325px]">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {jobMatches.map((job) => (
                       <JobCard key={job.id} job={job} onViewDetails={handleViewDetails} />

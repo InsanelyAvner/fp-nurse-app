@@ -3,6 +3,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import useAuth from '@/hooks/useAuth';
+
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
@@ -13,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Progress from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface Job {
   id: number;
@@ -123,6 +126,7 @@ const upcomingShifts: Shift[] = [
 const NurseDashboardComponent: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [profileCompletion, setProfileCompletion] = useState(60); // Example value
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -138,23 +142,94 @@ const NurseDashboardComponent: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const response = await fetch('/api/auth/validateToken')
-      if (!response.ok) {
-        router.push('/login')
-      }
-    }
-
-    checkAuth()
-  }, [router])
-
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   const handleViewDetails = (jobId: number) => {
     // Navigate to the job details page
     router.push(`/jobs/${jobId}`);
   };
+
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-gray-100 overflow-hidden">
+        <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} role="nurse" />
+
+        {/* Overlay for mobile sidebar */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black opacity-50 z-20 md:hidden"
+            onClick={toggleSidebar}
+          ></div>
+        )}
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Topbar toggleSidebar={toggleSidebar} role="nurse" />
+          <main className="flex-1 overflow-y-auto bg-gray-100 p-4">
+            <div className="max-w-7xl mx-auto">
+              {/* Welcome Message Skeleton */}
+              <Skeleton className="h-8 w-48 mb-4" />
+              <Skeleton className="h-6 w-3/4 mb-4" />
+
+              {/* Profile Completion Prompt Skeleton */}
+              <Skeleton className="h-16 w-full mb-6" />
+
+              {/* Quick Stats Skeleton */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+
+              {/* Job Matches Skeleton */}
+              <Card className="mb-8">
+                <CardHeader>
+                  <CardTitle><Skeleton className="h-6 w-1/2" /></CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[325px]">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <Skeleton className="h-32 w-full" />
+                      <Skeleton className="h-32 w-full" />
+                      <Skeleton className="h-32 w-full" />
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+
+              {/* Notifications and Upcoming Shifts Skeleton */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <Card>
+                  <CardHeader>
+                    <CardTitle><Skeleton className="h-6 w-1/2" /></CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-[200px]">
+                      <Skeleton className="h-8 w-full mb-4" />
+                      <Skeleton className="h-8 w-full mb-4" />
+                      <Skeleton className="h-8 w-full mb-4" />
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle><Skeleton className="h-6 w-1/2" /></CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-[200px]">
+                      <Skeleton className="h-8 w-full mb-4" />
+                      <Skeleton className="h-8 w-full mb-4" />
+                      <Skeleton className="h-8 w-full mb-4" />
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">

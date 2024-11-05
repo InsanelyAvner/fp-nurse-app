@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import jwt from 'jsonwebtoken'
+import { SignJWT } from 'jose';
 import cookie from 'cookie'
 
 
@@ -25,10 +25,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 		// if (!isMatch) {
 		//   return res.status(401).json({ error: 'Invalid email or password' })
 		// }
+		
+		const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
 
-		const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!, {
-			expiresIn: rememberMe ? '365d' : '1h',
-		})
+		const token = await new SignJWT({ user })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime(rememberMe ? '365d' : '1h') 
+        .sign(secret);
 
 		res.setHeader(
 			'Set-Cookie',

@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 import { Input } from "@/components/ui/input";
@@ -22,33 +22,17 @@ import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 
 interface Job {
-  id: number;
-  title: string;
-  facility: string;
-  date: string;
-  time: string;
-  payRate: string;
-  urgent: boolean;
-  requiredSkills: string[];
-  shiftType: string;
-  department: string;
+	id: number;
+	title: string;
+	facility: string;
+	date: string;
+	time: string;
+	payRate: string;
+	urgent: boolean;
+	requiredSkills: string[];
+	shiftType: string;
+	department: string;
 }
-
-const jobListings: Job[] = [
-  {
-    id: 1,
-    title: "Registered Nurse - ICU",
-    facility: "Farrer Park Hospital",
-    date: "2023-10-15",
-    time: "07:00 - 19:00",
-    payRate: "$50/hour",
-    urgent: true,
-    requiredSkills: ["ICU", "Critical Care"],
-    shiftType: "Day Shift",
-    department: "Intensive Care Unit",
-  },
-  // Add more job listings...
-];
 
 const JobSearchPageComponent: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -56,6 +40,21 @@ const JobSearchPageComponent: React.FC = () => {
   const [selectedShift, setSelectedShift] = useState("all");
   const [selectedDepartment, setSelectedDepartment] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [jobListings, setJobListings] = useState<Job[]>([]);
+
+  useEffect(() => {
+    const fetchJobs = async () => {
+      const response = await fetch('/api/jobs');
+      if (response.ok) {
+        const jobs: Job[] = await response.json();
+        setJobListings(jobs);
+      } else {
+        console.error("Failed to fetch job listings");
+      }
+    };
+
+    fetchJobs();
+  }, []);
 
   const jobsPerPage = 9;
   const router = useRouter();

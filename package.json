@@ -31,6 +31,7 @@
     "cookie": "^1.0.1",
     "date-fns": "^2.30.0",
     "geist": "^1.3.1",
+    "jose": "^5.9.6",
     "lucide-react": "^0.454.0",
     "next": "15.0.2",
     "next-auth": "^4.24.10",
@@ -44,7 +45,6 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

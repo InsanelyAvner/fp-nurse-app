@@ -53,9 +53,6 @@ export default function Login() {
             <Image className="" src="/logo.svg" alt="Farrer Park Hospital Logo" width={250} height={200}></Image>
           </div>
           <CardTitle className="text-2xl font-bold text-center">Login to Your Dashboard </CardTitle>
-          {/* <CardDescription className="text-center">
-            Enter your email and password to access your account
-          </CardDescription> */}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

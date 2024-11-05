@@ -232,7 +232,7 @@ const JobSearchPageComponent: React.FC = () => {
                             setSelectedShift("all");
                             setSelectedDepartment("all");
                           }}
-                          variant="secondary"
+                          variant="outline"
                           className="w-full md:w-auto"
                         >
                           Reset Filters

@@ -38,8 +38,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, toggleSidebar, role })
     { label: 'Job Matches', icon: <Briefcase size={20} />, href: '/job-matches' },
     { label: 'Job Search', icon: <Search size={20} />, href: '/job-search' },
     { label: 'My Applications', icon: <ClipboardList size={20} />, href: '/my-applications' },
-    { label: 'Schedule', icon: <Calendar size={20} />, href: '/schedule' },
-    { label: 'Messages', icon: <MessageSquare size={20} />, href: '/messages' },
+    // { label: 'Schedule', icon: <Calendar size={20} />, href: '/schedule' },
+    // { label: 'Messages', icon: <MessageSquare size={20} />, href: '/messages' },
     { label: 'Profile', icon: <User size={20} />, href: '/profile' },
     { label: 'Settings', icon: <Settings size={20} />, href: '/settings' },
   ];

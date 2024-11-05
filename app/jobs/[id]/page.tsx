@@ -41,7 +41,6 @@ interface Job {
   facilityInfo: {
     name: string;
     address: string;
-    about: string;
     image: string;
   };
 }
@@ -71,8 +70,6 @@ const jobListings: Job[] = [
     facilityInfo: {
       name: 'Farrer Park Hospital',
       address: '1 Farrer Park Station Rd, Singapore 217562',
-      about:
-        'Farrer Park Hospital is a private tertiary healthcare institution in Singapore, providing a wide range of medical services with state-of-the-art facilities.',
       image: '/images/farrer-park-hospital.jpg', // Ensure this image exists in the public/images directory
     },
   },
@@ -236,14 +233,6 @@ const JobDetailsPageComponent: React.FC = () => {
                       </Badge>
                     ))}
                   </div>
-                </div>
-
-                {/* Facility Information */}
-                <div className="mt-6">
-                  <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                    About {job.facilityInfo.name}
-                  </h3>
-                  <p className="text-gray-700">{job.facilityInfo.about}</p>
                 </div>
 
                 {/* Apply Button */}

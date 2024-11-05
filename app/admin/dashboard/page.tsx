@@ -153,91 +153,29 @@ const JobManagementPageComponent: React.FC = () => {
   });
   const [editingJob, setEditingJob] = useState<Job | null>(null);
 
-  const handleCreateJob = () => {
-    // Basic validation
-    if (
-      !newJob.title ||
-      !newJob.facility ||
-      !newJob.department ||
-      !newJob.shiftType ||
-      !newJob.date ||
-      !newJob.time ||
-      !newJob.payRate ||
-      newJob.requiredSkills.length === 0 ||
-      !newJob.description
-    ) {
-      alert("Please fill out all required fields.");
-      return;
-    }
+  // New state variables for delete confirmation
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
+  const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
 
-    const jobId = jobs.length > 0 ? Math.max(...jobs.map((j) => j.id)) + 1 : 1;
-    const createdJob: Job = {
-      ...newJob,
-      id: jobId,
-      status: "Active",
-      applicants: 0,
-    };
-    setJobs([...jobs, createdJob]);
-    setIsCreateJobOpen(false);
-    setNewJob({
-      title: "",
-      facility: "",
-      department: "",
-      shiftType: "",
-      date: new Date(),
-      time: "",
-      payRate: "",
-      requiredSkills: [],
-      description: "",
-      urgent: false,
-    });
-    alert("Job created successfully!");
+  const handleCreateJob = () => {
+    // ... (your existing create job logic)
   };
 
-  const handleDeleteJob = (jobId: number) => {
-    if (confirm("Are you sure you want to delete this job posting?")) {
-      setJobs(jobs.filter((job) => job.id !== jobId));
-    }
+  const handleDeleteJob = (job: Job) => {
+    setJobToDelete(job);
+    setIsDeleteDialogOpen(true);
   };
 
   const handleViewApplicants = (jobId: number) => {
-    // Navigate to the applicants page or open a modal
-    alert(`View applicants for job ID: ${jobId}`);
+    // ... (your existing view applicants logic)
   };
 
   const handleEditJob = (jobId: number) => {
-    const jobToEdit = jobs.find((job) => job.id === jobId);
-    if (jobToEdit) {
-      setEditingJob(jobToEdit);
-      setIsEditJobOpen(true);
-    }
+    // ... (your existing edit job logic)
   };
 
   const handleUpdateJob = () => {
-    if (!editingJob) return;
-
-    // Basic validation
-    if (
-      !editingJob.title ||
-      !editingJob.facility ||
-      !editingJob.department ||
-      !editingJob.shiftType ||
-      !editingJob.date ||
-      !editingJob.time ||
-      !editingJob.payRate ||
-      editingJob.requiredSkills.length === 0 ||
-      !editingJob.description
-    ) {
-      alert("Please fill out all required fields.");
-      return;
-    }
-
-    setJobs(
-      jobs.map((job) => (job.id === editingJob.id ? { ...editingJob } : job))
-    );
-    setIsEditJobOpen(false);
-    setEditingJob(null);
-    alert("Job updated successfully!");
+    // ... (your existing update job logic)
   };
 
   return (
@@ -358,7 +296,6 @@ const JobManagementPageComponent: React.FC = () => {
                         <Button
                           size="icon"
                           variant="ghost"
-                          // onClick={() => handleViewApplicants(job.id)}
                           aria-label="View Applicants"
                           className="text-gray-600 hover:text-gray-800"
                         >
@@ -377,7 +314,7 @@ const JobManagementPageComponent: React.FC = () => {
                       <Button
                         size="icon"
                         variant="ghost"
-                        onClick={() => handleDeleteJob(job.id)}
+                        onClick={() => handleDeleteJob(job)}
                         aria-label="Delete Job"
                         className="text-red-600 hover:text-red-800"
                       >
@@ -394,490 +331,49 @@ const JobManagementPageComponent: React.FC = () => {
 
       {/* Create Job Dialog */}
       <Dialog open={isCreateJobOpen} onOpenChange={setIsCreateJobOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-6 rounded-lg">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-semibold">
-              Create New Job
-            </DialogTitle>
-            <DialogDescription className="mt-2 text-gray-600">
-              Fill in the details for the new job posting.
-            </DialogDescription>
-          </DialogHeader>
-          <form
-            className="space-y-6 mt-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleCreateJob();
-            }}
-          >
-            <div>
-              <Label
-                htmlFor="title"
-                className="block font-medium text-gray-700"
-              >
-                Job Title
-              </Label>
-              <Input
-                id="title"
-                value={newJob.title}
-                onChange={(e) =>
-                  setNewJob({ ...newJob, title: e.target.value })
-                }
-                placeholder="Enter job title"
-                required
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label
-                htmlFor="facility"
-                className="block font-medium text-gray-700"
-              >
-                Facility
-              </Label>
-              <Input
-                id="facility"
-                value={newJob.facility}
-                onChange={(e) =>
-                  setNewJob({ ...newJob, facility: e.target.value })
-                }
-                placeholder="Enter facility name"
-                required
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label
-                htmlFor="department"
-                className="block font-medium text-gray-700"
-              >
-                Department
-              </Label>
-              <Select
-                onValueChange={(value) =>
-                  setNewJob({ ...newJob, department: value })
-                }
-                defaultValue=""
-                required
-              >
-                <SelectTrigger className="w-full mt-1">
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Intensive Care">Intensive Care</SelectItem>
-                  <SelectItem value="Emergency">Emergency</SelectItem>
-                  <SelectItem value="Pediatrics">Pediatrics</SelectItem>
-                  <SelectItem value="Surgery">Surgery</SelectItem>
-                  {/* Add more departments as needed */}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label
-                htmlFor="shiftType"
-                className="block font-medium text-gray-700"
-              >
-                Shift Type
-              </Label>
-              <Select
-                onValueChange={(value) =>
-                  setNewJob({ ...newJob, shiftType: value })
-                }
-                defaultValue=""
-                required
-              >
-                <SelectTrigger className="w-full mt-1">
-                  <SelectValue placeholder="Select shift type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Day">Day</SelectItem>
-                  <SelectItem value="Night">Night</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:space-x-6">
-              <div className="flex-1">
-                <Label
-                  htmlFor="date"
-                  className="block font-medium text-gray-700"
-                >
-                  Date
-                </Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal mt-1",
-                        !newJob.date && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-5 w-5 text-gray-500" />
-                      {newJob.date ? format(newJob.date, "PPP") : "Select date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={newJob.date}
-                      onSelect={(date) =>
-                        date && setNewJob({ ...newJob, date })
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="flex-1 mt-4 sm:mt-0">
-                <Label
-                  htmlFor="time"
-                  className="block font-medium text-gray-700"
-                >
-                  Time
-                </Label>
-                <Input
-                  id="time"
-                  value={newJob.time}
-                  onChange={(e) =>
-                    setNewJob({ ...newJob, time: e.target.value })
-                  }
-                  placeholder="e.g., 9:00 AM - 5:00 PM"
-                  required
-                  className="mt-1"
-                />
-              </div>
-            </div>
-            <div>
-              <Label
-                htmlFor="payRate"
-                className="block font-medium text-gray-700"
-              >
-                Pay Rate
-              </Label>
-              <Input
-                id="payRate"
-                value={newJob.payRate}
-                onChange={(e) =>
-                  setNewJob({ ...newJob, payRate: e.target.value })
-                }
-                placeholder="e.g., $30/hr"
-                required
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label
-                htmlFor="requiredSkills"
-                className="block font-medium text-gray-700"
-              >
-                Required Skills
-              </Label>
-              <Input
-                id="requiredSkills"
-                value={newJob.requiredSkills.join(", ")}
-                onChange={(e) =>
-                  setNewJob({
-                    ...newJob,
-                    requiredSkills: e.target.value
-                      .split(",")
-                      .map((skill) => skill.trim())
-                      .filter((skill) => skill !== ""),
-                  })
-                }
-                placeholder="e.g., Critical Care, Ventilator Management"
-                required
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label
-                htmlFor="description"
-                className="block font-medium text-gray-700"
-              >
-                Job Description
-              </Label>
-              <Textarea
-                id="description"
-                value={newJob.description}
-                onChange={(e) =>
-                  setNewJob({ ...newJob, description: e.target.value })
-                }
-                placeholder="Enter job description..."
-                required
-                className="mt-1"
-                rows={4}
-              />
-            </div>
-            <div className="flex items-center">
-              <Switch
-                id="urgent"
-                checked={newJob.urgent}
-                onCheckedChange={(checked) =>
-                  setNewJob({ ...newJob, urgent: checked })
-                }
-              />
-              <Label htmlFor="urgent" className="ml-2 text-gray-700">
-                Mark as Urgent
-              </Label>
-            </div>
-            <DialogFooter>
-              <Button
-                type="submit"
-                className="w-full bg-[#9d2235] hover:bg-[#7a172f] text-white py-2"
-              >
-                Create Job
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
+        {/* ... (your existing create job dialog code) */}
       </Dialog>
 
       {/* Edit Job Dialog */}
       <Dialog open={isEditJobOpen} onOpenChange={setIsEditJobOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-6 rounded-lg">
+        {/* ... (your existing edit job dialog code) */}
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-6 rounded-lg">
           <DialogHeader>
             <DialogTitle className="text-2xl font-semibold">
-              Edit Job
+              Confirm Deletion
             </DialogTitle>
             <DialogDescription className="mt-2 text-gray-600">
-              Update the details for the selected job posting.
+              Are you sure you want to delete the job posting "
+              <span className="font-medium">{jobToDelete?.title}</span>"? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          {editingJob && (
-            <form
-              className="space-y-6 mt-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleUpdateJob();
-              }}
+          <DialogFooter className="flex justify-end space-x-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              className="px-4 py-2"
             >
-              <div>
-                <Label
-                  htmlFor="edit-title"
-                  className="block font-medium text-gray-700"
-                >
-                  Job Title
-                </Label>
-                <Input
-                  id="edit-title"
-                  value={editingJob.title}
-                  onChange={(e) =>
-                    setEditingJob({ ...editingJob, title: e.target.value })
-                  }
-                  placeholder="Enter job title"
-                  required
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label
-                  htmlFor="edit-facility"
-                  className="block font-medium text-gray-700"
-                >
-                  Facility
-                </Label>
-                <Input
-                  id="edit-facility"
-                  value={editingJob.facility}
-                  onChange={(e) =>
-                    setEditingJob({ ...editingJob, facility: e.target.value })
-                  }
-                  placeholder="Enter facility name"
-                  required
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label
-                  htmlFor="edit-department"
-                  className="block font-medium text-gray-700"
-                >
-                  Department
-                </Label>
-                <Select
-                  onValueChange={(value) =>
-                    setEditingJob({ ...editingJob, department: value })
-                  }
-                  defaultValue={editingJob.department}
-                  required
-                >
-                  <SelectTrigger className="w-full mt-1">
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Intensive Care">
-                      Intensive Care
-                    </SelectItem>
-                    <SelectItem value="Emergency">Emergency</SelectItem>
-                    <SelectItem value="Pediatrics">Pediatrics</SelectItem>
-                    <SelectItem value="Surgery">Surgery</SelectItem>
-                    {/* Add more departments as needed */}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label
-                  htmlFor="edit-shiftType"
-                  className="block font-medium text-gray-700"
-                >
-                  Shift Type
-                </Label>
-                <Select
-                  onValueChange={(value) =>
-                    setEditingJob({ ...editingJob, shiftType: value })
-                  }
-                  defaultValue={editingJob.shiftType}
-                  required
-                >
-                  <SelectTrigger className="w-full mt-1">
-                    <SelectValue placeholder="Select shift type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Day">Day</SelectItem>
-                    <SelectItem value="Night">Night</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col sm:flex-row sm:space-x-6">
-                <div className="flex-1">
-                  <Label
-                    htmlFor="edit-date"
-                    className="block font-medium text-gray-700"
-                  >
-                    Date
-                  </Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal mt-1",
-                          !editingJob.date && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-5 w-5 text-gray-500" />
-                        {editingJob.date
-                          ? format(editingJob.date, "PPP")
-                          : "Select date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={editingJob.date}
-                        onSelect={(date) =>
-                          date && setEditingJob({ ...editingJob, date })
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="flex-1 mt-4 sm:mt-0">
-                  <Label
-                    htmlFor="edit-time"
-                    className="block font-medium text-gray-700"
-                  >
-                    Time
-                  </Label>
-                  <Input
-                    id="edit-time"
-                    value={editingJob.time}
-                    onChange={(e) =>
-                      setEditingJob({ ...editingJob, time: e.target.value })
-                    }
-                    placeholder="e.g., 9:00 AM - 5:00 PM"
-                    required
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label
-                  htmlFor="edit-payRate"
-                  className="block font-medium text-gray-700"
-                >
-                  Pay Rate
-                </Label>
-                <Input
-                  id="edit-payRate"
-                  value={editingJob.payRate}
-                  onChange={(e) =>
-                    setEditingJob({ ...editingJob, payRate: e.target.value })
-                  }
-                  placeholder="e.g., $30/hr"
-                  required
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label
-                  htmlFor="edit-requiredSkills"
-                  className="block font-medium text-gray-700"
-                >
-                  Required Skills
-                </Label>
-                <Input
-                  id="edit-requiredSkills"
-                  value={editingJob.requiredSkills.join(", ")}
-                  onChange={(e) =>
-                    setEditingJob({
-                      ...editingJob,
-                      requiredSkills: e.target.value
-                        .split(",")
-                        .map((skill) => skill.trim())
-                        .filter((skill) => skill !== ""),
-                    })
-                  }
-                  placeholder="e.g., Critical Care, Ventilator Management"
-                  required
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label
-                  htmlFor="edit-description"
-                  className="block font-medium text-gray-700"
-                >
-                  Job Description
-                </Label>
-                <Textarea
-                  id="edit-description"
-                  value={editingJob.description}
-                  onChange={(e) =>
-                    setEditingJob({
-                      ...editingJob,
-                      description: e.target.value,
-                    })
-                  }
-                  placeholder="Enter job description..."
-                  required
-                  className="mt-1"
-                  rows={4}
-                />
-              </div>
-              <div className="flex items-center">
-                <Switch
-                  id="edit-urgent"
-                  checked={editingJob.urgent}
-                  onCheckedChange={(checked) =>
-                    setEditingJob({ ...editingJob, urgent: checked })
-                  }
-                />
-                <Label htmlFor="edit-urgent" className="ml-2 text-gray-700">
-                  Mark as Urgent
-                </Label>
-              </div>
-              <DialogFooter>
-                <Button
-                  type="submit"
-                  className="w-full bg-[#9d2235] hover:bg-[#7a172f] text-white py-2"
-                >
-                  Update Job
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (jobToDelete) {
+                  setJobs(jobs.filter((job) => job.id !== jobToDelete.id));
+                  setIsDeleteDialogOpen(false);
+                  setJobToDelete(null);
+                  // Optionally, show a success message using a toast or similar
+                }
+              }}
+              className="px-4 py-2"
+            >
+              Delete
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

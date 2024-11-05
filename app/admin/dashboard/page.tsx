@@ -1,6 +1,8 @@
+// JobManagementPageComponent.tsx
+
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +36,7 @@ import {
   Eye,
   Plus,
   Trash,
+  X,
 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -128,8 +131,27 @@ const jobListings: Job[] = [
   },
 ];
 
+const predefinedSkills = [
+  "Critical Care",
+  "Ventilator Management",
+  "Patient Monitoring",
+  "Emergency Response",
+  "Trauma Care",
+  "Pediatric Care",
+  "Patient Education",
+  "Oncology",
+  "Geriatrics",
+  "Wound Care",
+  "ACLS",
+  "BLS",
+  "PALS",
+  "TNCC",
+  "ENPC",
+  "CPN",
+  // Add more skills as needed
+];
+
 const JobManagementPageComponent: React.FC = () => {
-  // For demonstration, set role here. In a real app, fetch from auth context or similar.
   const userRole: "admin" | "nurse" = "admin"; // Change to 'nurse' to test nurse dashboard
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -137,6 +159,8 @@ const JobManagementPageComponent: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>(jobListings);
   const [isCreateJobOpen, setIsCreateJobOpen] = useState<boolean>(false);
   const [isEditJobOpen, setIsEditJobOpen] = useState<boolean>(false);
+
+  // State for Create Job
   const [newJob, setNewJob] = useState<
     Omit<Job, "id" | "status" | "applicants">
   >({
@@ -151,31 +175,209 @@ const JobManagementPageComponent: React.FC = () => {
     description: "",
     urgent: false,
   });
-  const [editingJob, setEditingJob] = useState<Job | null>(null);
 
-  // New state variables for delete confirmation
+  const [skillInput, setSkillInput] = useState("");
+  const [filteredSkills, setFilteredSkills] = useState<string[]>(predefinedSkills);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+
+  // State for Edit Job
+  const [editingJob, setEditingJob] = useState<Job | null>(null);
+  const [editSkillInput, setEditSkillInput] = useState("");
+  const [editFilteredSkills, setEditFilteredSkills] =
+    useState<string[]>(predefinedSkills);
+  const [editSelectedSkills, setEditSelectedSkills] = useState<string[]>([]);
+
+  // State variables for delete confirmation
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
 
+  // Handlers for Create Job
   const handleCreateJob = () => {
-    // ... (your existing create job logic)
+    // Basic validation
+    if (
+      !newJob.title ||
+      !newJob.facility ||
+      !newJob.department ||
+      !newJob.shiftType ||
+      !newJob.date ||
+      !newJob.time ||
+      !newJob.payRate ||
+      selectedSkills.length === 0 ||
+      !newJob.description
+    ) {
+      alert("Please fill out all required fields.");
+      return;
+    }
+
+    const jobId = jobs.length > 0 ? Math.max(...jobs.map((j) => j.id)) + 1 : 1;
+    const createdJob: Job = {
+      ...newJob,
+      id: jobId,
+      status: "Active",
+      applicants: 0,
+      requiredSkills: selectedSkills,
+    };
+    setJobs([...jobs, createdJob]);
+    setIsCreateJobOpen(false);
+    setNewJob({
+      title: "",
+      facility: "",
+      department: "",
+      shiftType: "",
+      date: new Date(),
+      time: "",
+      payRate: "",
+      requiredSkills: [],
+      description: "",
+      urgent: false,
+    });
+    setSelectedSkills([]);
+    setSkillInput("");
+    setFilteredSkills(predefinedSkills);
+    alert("Job created successfully!");
   };
 
+  const handleSkillInputChange = (value: string) => {
+    setSkillInput(value);
+    if (value === "") {
+      setFilteredSkills(predefinedSkills.filter((s) => !selectedSkills.includes(s)));
+    } else {
+      setFilteredSkills(
+        predefinedSkills
+          .filter((s) => s.toLowerCase().includes(value.toLowerCase()))
+          .filter((s) => !selectedSkills.includes(s))
+      );
+    }
+  };
+
+  const handleSkillSelect = (skill: string) => {
+    if (!selectedSkills.includes(skill)) {
+      setSelectedSkills([...selectedSkills, skill]);
+    }
+    setSkillInput("");
+    setFilteredSkills(predefinedSkills.filter((s) => !selectedSkills.includes(s)));
+  };
+
+  const handleSkillRemove = (skill: string) => {
+    const updatedSkills = selectedSkills.filter((s) => s !== skill);
+    setSelectedSkills(updatedSkills);
+    setFilteredSkills(predefinedSkills.filter((s) => !updatedSkills.includes(s)));
+  };
+
+  // Handler to add custom skill on Enter key
+  const handleSkillKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && skillInput.trim() !== "") {
+      e.preventDefault();
+      const skill = skillInput.trim();
+      if (!selectedSkills.includes(skill)) {
+        setSelectedSkills([...selectedSkills, skill]);
+      }
+      setSkillInput("");
+      setFilteredSkills(predefinedSkills.filter((s) => !selectedSkills.includes(s)));
+    }
+  };
+
+  // Handlers for Edit Job
+  const handleEditJob = (jobId: number) => {
+    const jobToEdit = jobs.find((job) => job.id === jobId);
+    if (jobToEdit) {
+      setEditingJob(jobToEdit);
+      setEditSelectedSkills(jobToEdit.requiredSkills);
+      setEditFilteredSkills(
+        predefinedSkills.filter((s) => !jobToEdit.requiredSkills.includes(s))
+      );
+      setEditSkillInput("");
+      setIsEditJobOpen(true);
+    }
+  };
+
+  const handleEditSkillInputChange = (value: string) => {
+    setEditSkillInput(value);
+    if (value === "") {
+      setEditFilteredSkills(predefinedSkills.filter((s) => !editSelectedSkills.includes(s)));
+    } else {
+      setEditFilteredSkills(
+        predefinedSkills
+          .filter((s) => s.toLowerCase().includes(value.toLowerCase()))
+          .filter((s) => !editSelectedSkills.includes(s))
+      );
+    }
+  };
+
+  const handleEditSkillSelect = (skill: string) => {
+    if (!editSelectedSkills.includes(skill)) {
+      setEditSelectedSkills([...editSelectedSkills, skill]);
+    }
+    setEditSkillInput("");
+    setEditFilteredSkills(predefinedSkills.filter((s) => !editSelectedSkills.includes(s)));
+  };
+
+  const handleEditSkillRemove = (skill: string) => {
+    const updatedSkills = editSelectedSkills.filter((s) => s !== skill);
+    setEditSelectedSkills(updatedSkills);
+    setEditFilteredSkills(predefinedSkills.filter((s) => !updatedSkills.includes(s)));
+  };
+
+  // Handler to add custom skill on Enter key in Edit form
+  const handleEditSkillKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && editSkillInput.trim() !== "") {
+      e.preventDefault();
+      const skill = editSkillInput.trim();
+      if (!editSelectedSkills.includes(skill)) {
+        setEditSelectedSkills([...editSelectedSkills, skill]);
+      }
+      setEditSkillInput("");
+      setEditFilteredSkills(predefinedSkills.filter((s) => !editSelectedSkills.includes(s)));
+    }
+  };
+
+  const handleUpdateJob = () => {
+    if (!editingJob) return;
+
+    // Basic validation
+    if (
+      !editingJob.title ||
+      !editingJob.facility ||
+      !editingJob.department ||
+      !editingJob.shiftType ||
+      !editingJob.date ||
+      !editingJob.time ||
+      !editingJob.payRate ||
+      editSelectedSkills.length === 0 ||
+      !editingJob.description
+    ) {
+      alert("Please fill out all required fields.");
+      return;
+    }
+
+    const updatedJob = { ...editingJob, requiredSkills: editSelectedSkills };
+    setJobs(jobs.map((job) => (job.id === editingJob.id ? updatedJob : job)));
+    setIsEditJobOpen(false);
+    setEditingJob(null);
+    setEditSelectedSkills([]);
+    setEditSkillInput("");
+    setEditFilteredSkills(predefinedSkills);
+    alert("Job updated successfully!");
+  };
+
+  // Handlers for Delete Job
   const handleDeleteJob = (job: Job) => {
     setJobToDelete(job);
     setIsDeleteDialogOpen(true);
   };
 
+  const confirmDeleteJob = () => {
+    if (jobToDelete) {
+      setJobs(jobs.filter((job) => job.id !== jobToDelete.id));
+      setIsDeleteDialogOpen(false);
+      setJobToDelete(null);
+      alert("Job deleted successfully!");
+    }
+  };
+
   const handleViewApplicants = (jobId: number) => {
-    // ... (your existing view applicants logic)
-  };
-
-  const handleEditJob = (jobId: number) => {
-    // ... (your existing edit job logic)
-  };
-
-  const handleUpdateJob = () => {
-    // ... (your existing update job logic)
+    // Navigate to the applicants page or open a modal
+    alert(`View applicants for job ID: ${jobId}`);
   };
 
   return (
@@ -331,27 +533,611 @@ const JobManagementPageComponent: React.FC = () => {
 
       {/* Create Job Dialog */}
       <Dialog open={isCreateJobOpen} onOpenChange={setIsCreateJobOpen}>
-        {/* ... (your existing create job dialog code) */}
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-6 rounded-lg">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-semibold">
+              Create New Job
+            </DialogTitle>
+            <DialogDescription className="mt-2 text-gray-600">
+              Fill in the details for the new job posting.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-6 mt-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleCreateJob();
+            }}
+          >
+            {/* Job Title */}
+            <div>
+              <Label htmlFor="title" className="block font-medium text-gray-700">
+                Job Title
+              </Label>
+              <Input
+                id="title"
+                value={newJob.title}
+                onChange={(e) => setNewJob({ ...newJob, title: e.target.value })}
+                placeholder="Enter job title"
+                required
+                className="mt-1"
+              />
+            </div>
+
+            {/* Facility */}
+            <div>
+              <Label htmlFor="facility" className="block font-medium text-gray-700">
+                Facility
+              </Label>
+              <Input
+                id="facility"
+                value={newJob.facility}
+                onChange={(e) => setNewJob({ ...newJob, facility: e.target.value })}
+                placeholder="Enter facility name"
+                required
+                className="mt-1"
+              />
+            </div>
+
+            {/* Department */}
+            <div>
+              <Label htmlFor="department" className="block font-medium text-gray-700">
+                Department
+              </Label>
+              <Select
+                onValueChange={(value) => setNewJob({ ...newJob, department: value })}
+                defaultValue=""
+                required
+              >
+                <SelectTrigger className="w-full mt-1">
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Intensive Care">Intensive Care</SelectItem>
+                  <SelectItem value="Emergency">Emergency</SelectItem>
+                  <SelectItem value="Pediatrics">Pediatrics</SelectItem>
+                  <SelectItem value="Surgery">Surgery</SelectItem>
+                  {/* Add more departments as needed */}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Shift Type */}
+            <div>
+              <Label htmlFor="shiftType" className="block font-medium text-gray-700">
+                Shift Type
+              </Label>
+              <Select
+                onValueChange={(value) => setNewJob({ ...newJob, shiftType: value })}
+                defaultValue=""
+                required
+              >
+                <SelectTrigger className="w-full mt-1">
+                  <SelectValue placeholder="Select shift type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Day">Day</SelectItem>
+                  <SelectItem value="Night">Night</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Date and Time */}
+            <div className="flex flex-col sm:flex-row sm:space-x-6">
+              {/* Date */}
+              <div className="flex-1">
+                <Label htmlFor="date" className="block font-medium text-gray-700">
+                  Date
+                </Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal mt-1",
+                        !newJob.date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-5 w-5 text-gray-500" />
+                      {newJob.date ? format(newJob.date, "PPP") : "Select date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={newJob.date}
+                      onSelect={(date) => date && setNewJob({ ...newJob, date })}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Time */}
+              <div className="flex-1 mt-4 sm:mt-0">
+                <Label htmlFor="time" className="block font-medium text-gray-700">
+                  Time
+                </Label>
+                <Input
+                  id="time"
+                  value={newJob.time}
+                  onChange={(e) => setNewJob({ ...newJob, time: e.target.value })}
+                  placeholder="e.g., 9:00 AM - 5:00 PM"
+                  required
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            {/* Pay Rate */}
+            <div>
+              <Label htmlFor="payRate" className="block font-medium text-gray-700">
+                Pay Rate
+              </Label>
+              <Input
+                id="payRate"
+                value={newJob.payRate}
+                onChange={(e) => setNewJob({ ...newJob, payRate: e.target.value })}
+                placeholder="e.g., $30/hr"
+                required
+                className="mt-1"
+              />
+            </div>
+
+            {/* Required Skills with Autocomplete and Custom Input */}
+            <div>
+              <Label
+                htmlFor="requiredSkills"
+                className="block font-medium text-gray-700"
+              >
+                Required Skills
+              </Label>
+              <div className="relative mt-1">
+                <Input
+                  id="requiredSkills"
+                  type="text"
+                  value={skillInput}
+                  onChange={(e) => handleSkillInputChange(e.target.value)}
+                  onKeyDown={handleSkillKeyDown}
+                  placeholder="Type to add skills or press Enter to add custom skill"
+                  autoComplete="off"
+                  className="pr-10"
+                />
+                {/* Suggestions Dropdown */}
+                {skillInput && filteredSkills.length > 0 && (
+                  <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+                    {filteredSkills.map((skill) => (
+                      <li
+                        key={skill}
+                        onClick={() => handleSkillSelect(skill)}
+                        className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                      >
+                        {skill}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {/* Add Button for Custom Skills */}
+                {skillInput.trim() !== "" && !predefinedSkills.includes(skillInput.trim()) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const skill = skillInput.trim();
+                      if (skill !== "" && !selectedSkills.includes(skill)) {
+                        setSelectedSkills([...selectedSkills, skill]);
+                      }
+                      setSkillInput("");
+                      setFilteredSkills(predefinedSkills.filter((s) => !selectedSkills.includes(s)));
+                    }}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-[#9d2235] text-white px-2 py-1 rounded-md text-sm hover:bg-[#7a172f]"
+                  >
+                    Add
+                  </button>
+                )}
+              </div>
+              {/* Display Selected Skills */}
+              <div className="flex flex-wrap gap-2 mt-2">
+                {selectedSkills.map((skill) => (
+                  <Badge
+                    key={skill}
+                    variant="secondary"
+                    className="flex items-center text-sm"
+                  >
+                    {skill}
+                    <button
+                      type="button"
+                      onClick={() => handleSkillRemove(skill)}
+                      className="ml-2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                      aria-label={`Remove ${skill}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Job Description */}
+            <div>
+              <Label
+                htmlFor="description"
+                className="block font-medium text-gray-700"
+              >
+                Job Description
+              </Label>
+              <Textarea
+                id="description"
+                value={newJob.description}
+                onChange={(e) =>
+                  setNewJob({ ...newJob, description: e.target.value })
+                }
+                placeholder="Enter job description..."
+                required
+                className="mt-1"
+                rows={4}
+              />
+            </div>
+
+            {/* Urgent Switch */}
+            <div className="flex items-center">
+              <Switch
+                id="urgent"
+                checked={newJob.urgent}
+                onCheckedChange={(checked) =>
+                  setNewJob({ ...newJob, urgent: checked })
+                }
+              />
+              <Label htmlFor="urgent" className="ml-2 text-gray-700">
+                Mark as Urgent
+              </Label>
+            </div>
+
+            {/* Submit Button */}
+            <DialogFooter>
+              <Button
+                type="submit"
+                className="w-full bg-[#9d2235] hover:bg-[#7a172f] text-white py-2"
+              >
+                Create Job
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
       </Dialog>
 
       {/* Edit Job Dialog */}
       <Dialog open={isEditJobOpen} onOpenChange={setIsEditJobOpen}>
-        {/* ... (your existing edit job dialog code) */}
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-6 rounded-lg">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-semibold">
+              Edit Job
+            </DialogTitle>
+            <DialogDescription className="mt-2 text-gray-600">
+              Update the details for the selected job posting.
+            </DialogDescription>
+          </DialogHeader>
+          {editingJob && (
+            <form
+              className="space-y-6 mt-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleUpdateJob();
+              }}
+            >
+              {/* Job Title */}
+              <div>
+                <Label
+                  htmlFor="edit-title"
+                  className="block font-medium text-gray-700"
+                >
+                  Job Title
+                </Label>
+                <Input
+                  id="edit-title"
+                  value={editingJob.title}
+                  onChange={(e) =>
+                    setEditingJob({ ...editingJob, title: e.target.value })
+                  }
+                  placeholder="Enter job title"
+                  required
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Facility */}
+              <div>
+                <Label
+                  htmlFor="edit-facility"
+                  className="block font-medium text-gray-700"
+                >
+                  Facility
+                </Label>
+                <Input
+                  id="edit-facility"
+                  value={editingJob.facility}
+                  onChange={(e) =>
+                    setEditingJob({ ...editingJob, facility: e.target.value })
+                  }
+                  placeholder="Enter facility name"
+                  required
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Department */}
+              <div>
+                <Label
+                  htmlFor="edit-department"
+                  className="block font-medium text-gray-700"
+                >
+                  Department
+                </Label>
+                <Select
+                  onValueChange={(value) =>
+                    setEditingJob({ ...editingJob, department: value })
+                  }
+                  defaultValue={editingJob.department}
+                  required
+                >
+                  <SelectTrigger className="w-full mt-1">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Intensive Care">Intensive Care</SelectItem>
+                    <SelectItem value="Emergency">Emergency</SelectItem>
+                    <SelectItem value="Pediatrics">Pediatrics</SelectItem>
+                    <SelectItem value="Surgery">Surgery</SelectItem>
+                    {/* Add more departments as needed */}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Shift Type */}
+              <div>
+                <Label
+                  htmlFor="edit-shiftType"
+                  className="block font-medium text-gray-700"
+                >
+                  Shift Type
+                </Label>
+                <Select
+                  onValueChange={(value) =>
+                    setEditingJob({ ...editingJob, shiftType: value })
+                  }
+                  defaultValue={editingJob.shiftType}
+                  required
+                >
+                  <SelectTrigger className="w-full mt-1">
+                    <SelectValue placeholder="Select shift type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Day">Day</SelectItem>
+                    <SelectItem value="Night">Night</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Date and Time */}
+              <div className="flex flex-col sm:flex-row sm:space-x-6">
+                {/* Date */}
+                <div className="flex-1">
+                  <Label
+                    htmlFor="edit-date"
+                    className="block font-medium text-gray-700"
+                  >
+                    Date
+                  </Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal mt-1",
+                          !editingJob.date && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-5 w-5 text-gray-500" />
+                        {editingJob.date
+                          ? format(editingJob.date, "PPP")
+                          : "Select date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={editingJob.date}
+                        onSelect={(date) =>
+                          date && setEditingJob({ ...editingJob, date })
+                        }
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Time */}
+                <div className="flex-1 mt-4 sm:mt-0">
+                  <Label
+                    htmlFor="edit-time"
+                    className="block font-medium text-gray-700"
+                  >
+                    Time
+                  </Label>
+                  <Input
+                    id="edit-time"
+                    value={editingJob.time}
+                    onChange={(e) =>
+                      setEditingJob({ ...editingJob, time: e.target.value })
+                    }
+                    placeholder="e.g., 9:00 AM - 5:00 PM"
+                    required
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              {/* Pay Rate */}
+              <div>
+                <Label
+                  htmlFor="edit-payRate"
+                  className="block font-medium text-gray-700"
+                >
+                  Pay Rate
+                </Label>
+                <Input
+                  id="edit-payRate"
+                  value={editingJob.payRate}
+                  onChange={(e) =>
+                    setEditingJob({ ...editingJob, payRate: e.target.value })
+                  }
+                  placeholder="e.g., $30/hr"
+                  required
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Required Skills with Autocomplete and Custom Input */}
+              <div>
+                <Label
+                  htmlFor="edit-requiredSkills"
+                  className="block font-medium text-gray-700"
+                >
+                  Required Skills
+                </Label>
+                <div className="relative mt-1">
+                  <Input
+                    id="edit-requiredSkills"
+                    type="text"
+                    value={editSkillInput}
+                    onChange={(e) => handleEditSkillInputChange(e.target.value)}
+                    onKeyDown={handleEditSkillKeyDown}
+                    placeholder="Type to add skills or press Enter to add custom skill"
+                    autoComplete="off"
+                    className="pr-10"
+                  />
+                  {/* Suggestions Dropdown */}
+                  {editSkillInput && editFilteredSkills.length > 0 && (
+                    <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
+                      {editFilteredSkills.map((skill) => (
+                        <li
+                          key={skill}
+                          onClick={() => handleEditSkillSelect(skill)}
+                          className="px-4 py-2 cursor-pointer hover:bg-gray-100"
+                        >
+                          {skill}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {/* Add Button for Custom Skills */}
+                  {editSkillInput.trim() !== "" &&
+                    !predefinedSkills.includes(editSkillInput.trim()) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const skill = editSkillInput.trim();
+                          if (skill !== "" && !editSelectedSkills.includes(skill)) {
+                            setEditSelectedSkills([...editSelectedSkills, skill]);
+                          }
+                          setEditSkillInput("");
+                          setEditFilteredSkills(
+                            predefinedSkills.filter((s) => !editSelectedSkills.includes(s))
+                          );
+                        }}
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-[#9d2235] text-white px-2 py-1 rounded-md text-sm hover:bg-[#7a172f]"
+                      >
+                        Add
+                      </button>
+                    )}
+                </div>
+                {/* Display Selected Skills */}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {editSelectedSkills.map((skill) => (
+                    <Badge
+                      key={skill}
+                      variant="secondary"
+                      className="flex items-center text-sm"
+                    >
+                      {skill}
+                      <button
+                        type="button"
+                        onClick={() => handleEditSkillRemove(skill)}
+                        className="ml-2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                        aria-label={`Remove ${skill}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Job Description */}
+              <div>
+                <Label
+                  htmlFor="edit-description"
+                  className="block font-medium text-gray-700"
+                >
+                  Job Description
+                </Label>
+                <Textarea
+                  id="edit-description"
+                  value={editingJob.description}
+                  onChange={(e) =>
+                    setEditingJob({
+                      ...editingJob,
+                      description: e.target.value,
+                    })
+                  }
+                  placeholder="Enter job description..."
+                  required
+                  className="mt-1"
+                  rows={4}
+                />
+              </div>
+
+              {/* Urgent Switch */}
+              <div className="flex items-center">
+                <Switch
+                  id="edit-urgent"
+                  checked={editingJob.urgent}
+                  onCheckedChange={(checked) =>
+                    setEditingJob({ ...editingJob, urgent: checked })
+                  }
+                />
+                <Label htmlFor="edit-urgent" className="ml-2 text-gray-700">
+                  Mark as Urgent
+                </Label>
+              </div>
+
+              {/* Submit Button */}
+              <DialogFooter>
+                <Button
+                  type="submit"
+                  className="w-full bg-[#9d2235] hover:bg-[#7a172f] text-white py-2"
+                >
+                  Update Job
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-6 rounded-lg">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-semibold">
+            <DialogTitle className="text-2xl font-semibold text-red-600">
               Confirm Deletion
             </DialogTitle>
             <DialogDescription className="mt-2 text-gray-600">
               Are you sure you want to delete the job posting "
-              <span className="font-medium">{jobToDelete?.title}</span>"? This action cannot be undone.
+              <span className="font-medium">{jobToDelete?.title}</span>"? This
+              action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex justify-end space-x-4">
+          <DialogFooter className="flex justify-end space-x-4 mt-4">
             <Button
               variant="outline"
               onClick={() => setIsDeleteDialogOpen(false)}
@@ -361,14 +1147,7 @@ const JobManagementPageComponent: React.FC = () => {
             </Button>
             <Button
               variant="destructive"
-              onClick={() => {
-                if (jobToDelete) {
-                  setJobs(jobs.filter((job) => job.id !== jobToDelete.id));
-                  setIsDeleteDialogOpen(false);
-                  setJobToDelete(null);
-                  // Optionally, show a success message using a toast or similar
-                }
-              }}
+              onClick={confirmDeleteJob}
               className="px-4 py-2"
             >
               Delete

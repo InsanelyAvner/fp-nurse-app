@@ -15,16 +15,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
+import { useRouter } from 'next/navigation'
+
 interface TopbarProps {
   role: 'admin' | 'nurse';
   toggleSidebar: () => void;
 }
 
 const Topbar: React.FC<TopbarProps> = ({ role, toggleSidebar }) => {
+  const router = useRouter();
   return (
     <header className="bg-white shadow-sm z-10">
       <div className="flex justify-between items-center py-4 px-4 sm:px-6 lg:px-8">
-        
+
         {/* Sidebar Toggle and Title */}
         <div className="flex items-center">
           <Button
@@ -48,15 +51,6 @@ const Topbar: React.FC<TopbarProps> = ({ role, toggleSidebar }) => {
             <span className="sr-only">Notifications</span>
             <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#9d2235] text-xs font-semibold text-white flex items-center justify-center">
               3
-            </span>
-          </Button>
-
-          {/* Messages */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Mail size={20} />
-            <span className="sr-only">Messages</span>
-            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#9d2235] text-xs font-semibold text-white flex items-center justify-center">
-              2
             </span>
           </Button>
 
@@ -91,9 +85,14 @@ const Topbar: React.FC<TopbarProps> = ({ role, toggleSidebar }) => {
                 <span>Settings</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={
+                () => {
+                  document.cookie = 'token=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+                  router.push('/login');
+                }
+              }>
                 <LogOut className="mr-2 h-4 w-4 text-red-500" />
-                <span>Log out</span>
+                <span >Log out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

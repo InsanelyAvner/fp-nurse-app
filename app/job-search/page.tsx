@@ -20,18 +20,19 @@ import { Pagination } from "@/components/Pagination";
 import { Search } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Job {
-	id: number;
-	title: string;
-	facility: string;
-	date: string;
-	time: string;
-	payRate: string;
-	urgent: boolean;
-	requiredSkills: string[];
-	shiftType: string;
-	department: string;
+  id: number;
+  title: string;
+  facility: string;
+  date: string;
+  time: string;
+  payRate: string;
+  urgent: boolean;
+  requiredSkills: string[];
+  shiftType: string;
+  department: string;
 }
 
 const JobSearchPageComponent: React.FC = () => {
@@ -42,12 +43,15 @@ const JobSearchPageComponent: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [jobListings, setJobListings] = useState<Job[]>([]);
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     const fetchJobs = async () => {
       const response = await fetch('/api/jobs');
       if (response.ok) {
         const jobs: Job[] = await response.json();
         setJobListings(jobs);
+        setLoading(false);
       } else {
         console.error("Failed to fetch job listings");
       }
@@ -129,8 +133,7 @@ const JobSearchPageComponent: React.FC = () => {
                   Discover Jobs
                 </h1>
                 <p className="text-lg md:text-xl text-gray-200 mt-4 max-w-2xl">
-                  Explore thousands of jobs that match your skills and
-                  preferences.
+                  Explore thousands of jobs that match your skills and preferences.
                 </p>
               </div>
 
@@ -140,10 +143,7 @@ const JobSearchPageComponent: React.FC = () => {
                   <div className="space-y-6">
                     {/* Search Input */}
                     <div className="w-full">
-                      <Label
-                        htmlFor="search"
-                        className="text-gray-700 font-semibold"
-                      >
+                      <Label htmlFor="search" className="text-gray-700 font-semibold">
                         Search Jobs
                       </Label>
                       <div className="relative mt-2">
@@ -165,10 +165,7 @@ const JobSearchPageComponent: React.FC = () => {
                     {/* Filters Row */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                       <div>
-                        <Label
-                          htmlFor="shiftType"
-                          className="text-gray-700 font-semibold"
-                        >
+                        <Label htmlFor="shiftType" className="text-gray-700 font-semibold">
                           Shift Type
                         </Label>
                         <Select
@@ -181,24 +178,17 @@ const JobSearchPageComponent: React.FC = () => {
                           <SelectContent>
                             <SelectItem value="all">All Shifts</SelectItem>
                             <SelectItem value="Day Shift">Day Shift</SelectItem>
-                            <SelectItem value="Night Shift">
-                              Night Shift
-                            </SelectItem>
+                            <SelectItem value="Night Shift">Night Shift</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
 
                       <div>
-                        <Label
-                          htmlFor="department"
-                          className="text-gray-700 font-semibold"
-                        >
+                        <Label htmlFor="department" className="text-gray-700 font-semibold">
                           Department
                         </Label>
                         <Select
-                          onValueChange={(value) =>
-                            setSelectedDepartment(value)
-                          }
+                          onValueChange={(value) => setSelectedDepartment(value)}
                           defaultValue="all"
                         >
                           <SelectTrigger className="mt-2">
@@ -206,20 +196,12 @@ const JobSearchPageComponent: React.FC = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Departments</SelectItem>
-                            <SelectItem value="Intensive Care Unit">
-                              Intensive Care Unit
-                            </SelectItem>
-                            <SelectItem value="Emergency Room">
-                              Emergency Room
-                            </SelectItem>
-                            <SelectItem value="Pediatrics">
-                              Pediatrics
-                            </SelectItem>
+                            <SelectItem value="Intensive Care Unit">Intensive Care Unit</SelectItem>
+                            <SelectItem value="Emergency Room">Emergency Room</SelectItem>
+                            <SelectItem value="Pediatrics">Pediatrics</SelectItem>
                             <SelectItem value="Surgical">Surgical</SelectItem>
                             <SelectItem value="Oncology">Oncology</SelectItem>
-                            <SelectItem value="Geriatrics">
-                              Geriatrics
-                            </SelectItem>
+                            <SelectItem value="Geriatrics">Geriatrics</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -246,7 +228,24 @@ const JobSearchPageComponent: React.FC = () => {
 
           {/* Job Listings Section */}
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            {currentJobs.length > 0 ? (
+            {/* Use skeletons when loading */}
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+                {Array.from({ length: 3 }, (_, index) => (
+                  <Card key={index} className="flex flex-col max-h-80 shadow-sm">
+                    <CardHeader>
+                      <Skeleton className="h-6 w-3/4 mb-2" />
+                      <Skeleton className="h-4 w-1/2" />
+                    </CardHeader>
+                    <CardContent>
+                      <Skeleton className="h-4 mb-2" />
+                      <Skeleton className="h-4 w-2/4 mb-2" />
+                      <Skeleton className="h-4 w-1/3" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : currentJobs.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
                 {currentJobs.map((job) => (
                   <JobCard
@@ -260,8 +259,7 @@ const JobSearchPageComponent: React.FC = () => {
               <div className="text-center py-16 bg-white rounded-lg shadow-sm">
                 <p className="text-2xl text-gray-600">No jobs found.</p>
                 <p className="text-gray-500 mt-2">
-                  Try adjusting your search or filters to find what you're
-                  looking for.
+                  Try adjusting your search or filters to find what you're looking for.
                 </p>
               </div>
             )}

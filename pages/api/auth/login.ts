@@ -25,21 +25,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 		// if (!isMatch) {
 		//   return res.status(401).json({ error: 'Invalid email or password' })
 		// }
-		
+
 		const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
 
 		const token = await new SignJWT({ user })
-        .setProtectedHeader({ alg: 'HS256' })
-        .setIssuedAt()
-        .setExpirationTime(rememberMe ? '365d' : '1h') 
-        .sign(secret);
+			.setProtectedHeader({ alg: 'HS256' })
+			.setIssuedAt()
+			.setExpirationTime(rememberMe ? '365d' : '1h')
+			.sign(secret);
 
 		res.setHeader(
 			'Set-Cookie',
 			cookie.serialize('token', token, {
 				httpOnly: true,
 				secure: process.env.NODE_ENV === 'production',
-				maxAge: 3600,
+				maxAge: rememberMe ? 2147483647 : 3600,
 				path: '/',
 			})
 		)

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
+import cookie from 'cookie'
 
 const protectedRoutes = ['/', '/profile', '/jobs', '/job-search'];
 
@@ -16,12 +17,22 @@ export async function middleware(request: NextRequest) {
     }
 
     try {
-      const secret = new TextEncoder().encode(process.env.JWT_SECRET); 
+      const secret = new TextEncoder().encode(process.env.JWT_SECRET);
       await jwtVerify(token.value, secret);
     } catch (error) {
       console.error('Token verification failed:', error);
       const loginUrl = new URL('/login', request.url);
-      return NextResponse.redirect(loginUrl);
+      const headers = new Headers(request.headers)
+      headers.set('Set-Cookie',
+        cookie.serialize('token', '', {
+          httpOnly: true,
+          maxAge: -1,
+          path: '/',
+        })
+      );
+      return NextResponse.redirect(loginUrl, {
+        headers
+      })
     }
   }
 

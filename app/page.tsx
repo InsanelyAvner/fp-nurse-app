@@ -3,7 +3,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import useAuth from '@/hooks/useAuth';
 
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';

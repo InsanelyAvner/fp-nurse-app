@@ -29,19 +29,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, toggleSidebar, role })
   // Define navigation items based on role
   const adminNavItems = [
     { label: 'Dashboard', icon: <Home size={20} />, href: '/admin/dashboard' },
-    { label: 'Settings', icon: <Settings size={20} />, href: '/settings' },
-    { label: 'Support', icon: <FileText size={20} />, href: '/support' },
+    { label: 'Settings', icon: <Settings size={20} />, href: '/#' },
+    { label: 'Support', icon: <FileText size={20} />, href: '/#' },
   ];
 
   const nurseNavItems = [
     { label: 'Dashboard', icon: <Home size={20} />, href: '/' },
-    { label: 'Job Matches', icon: <Briefcase size={20} />, href: '/job-matches' },
+    { label: 'Job Matches', icon: <Briefcase size={20} />, href: '/#' },
     { label: 'Job Search', icon: <Search size={20} />, href: '/job-search' },
-    { label: 'My Applications', icon: <ClipboardList size={20} />, href: '/my-applications' },
+    { label: 'My Applications', icon: <ClipboardList size={20} />, href: '/#' },
     // { label: 'Schedule', icon: <Calendar size={20} />, href: '/schedule' },
     // { label: 'Messages', icon: <MessageSquare size={20} />, href: '/messages' },
     { label: 'Profile', icon: <User size={20} />, href: '/profile' },
-    { label: 'Settings', icon: <Settings size={20} />, href: '/settings' },
+    { label: 'Settings', icon: <Settings size={20} />, href: '/#' },
   ];
 
   const navItems = role === 'admin' ? adminNavItems : nurseNavItems;

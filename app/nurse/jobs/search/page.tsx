@@ -90,7 +90,7 @@ const JobSearchPageComponent: React.FC = () => {
 
   // Define the onViewDetails function
   const onViewDetails = (jobId: number) => {
-    router.push(`/jobs/${jobId}`);
+    router.push(`/nurse/jobs/${jobId}`);
   };
 
   return (
@@ -119,7 +119,7 @@ const JobSearchPageComponent: React.FC = () => {
           <div className="relative">
             <div className="absolute inset-0">
               <img
-                src="/bg.png"
+                src="/images/bg.png"
                 alt="Job Search Banner"
                 className="w-full h-[280px] md:h-[320px] lg:h-[360px] object-cover"
               />

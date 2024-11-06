@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { NextResponse } from 'next/server';
 
 interface Job {
     id: number;
@@ -44,27 +44,30 @@ const jobListings: Job[] = [
         facilityInfo: {
             name: 'Farrer Park Hospital',
             address: '1 Farrer Park Station Rd, Singapore 217562',
-            image: '/images/farrer-park-hospital.jpg', // Ensure this image exists in the public/images directory
+            image: '/images/farrer-park-hospital.jpg',
         },
     },
 ];
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-    const { id } = req.query;
-    const jobId = parseInt(id as string, 10);
+export async function GET(req: Request) {
+    const { searchParams } = new URL(req.url);
+    const idParam = searchParams.get('id');
+    const jobId = parseInt(idParam ?? '', 10);
+
     if (isNaN(jobId)) {
-        return res.status(400).json({ error: "Invalid job ID" });
+        return NextResponse.json({ error: 'Invalid job ID' }, { status: 400 });
     }
+
     try {
         const job = jobListings.find((job) => job.id === jobId) || null;
 
         if (!job) {
-            return res.status(404).json({ error: "Job not found" });
+            return NextResponse.json({ error: 'Job not found' }, { status: 404 });
         }
 
-        return res.status(200).json(job);
+        return NextResponse.json(job, { status: 200 });
     } catch (error) {
-        console.error("Error fetching job:", error);
-        return res.status(500).json({ error: "Internal server error" });
+        console.error('Error fetching job:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

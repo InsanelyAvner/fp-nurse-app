@@ -50,7 +50,7 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex justify-center items-center mb-3">
-            <Image className="" src="/logo.svg" alt="Farrer Park Hospital Logo" width={250} height={200}></Image>
+            <Image className="" src="/images/logo.svg" alt="Farrer Park Hospital Logo" width={250} height={200}></Image>
           </div>
           <CardTitle className="text-2xl font-bold text-center">Login to Your Dashboard </CardTitle>
         </CardHeader>

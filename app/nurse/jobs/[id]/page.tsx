@@ -80,7 +80,7 @@ const JobDetailsPageComponent: React.FC = () => {
             {/* Back Button */}
             <Button
               variant="ghost"
-              onClick={() => router.push('/job-search')}
+              onClick={() => router.push('/nurse/jobs/search')}
               className="mb-6 flex items-center text-gray-600 hover:text-gray-800"
             >
               <ChevronLeft className="h-5 w-5 mr-1" />

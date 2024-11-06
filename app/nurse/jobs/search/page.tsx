@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import JobCard from "@/components/JobCard";
 import { Pagination } from "@/components/Pagination";
 import { Search } from "lucide-react";
@@ -38,57 +38,62 @@ interface Job {
 const JobSearchPageComponent: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [selectedShift, setSelectedShift] = useState("all");
   const [selectedDepartment, setSelectedDepartment] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [jobListings, setJobListings] = useState<Job[]>([]);
-
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchJobs = async () => {
-      const response = await fetch('/api/jobs');
-      if (response.ok) {
-        const jobs: Job[] = await response.json();
-        setJobListings(jobs);
-        setLoading(false);
-      } else {
-        console.error("Failed to fetch job listings");
-      }
-    };
-
-    fetchJobs();
-  }, []);
 
   const jobsPerPage = 9;
   const router = useRouter();
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  // Filter and search jobs
-  const filteredJobs = jobListings.filter((job) => {
-    const matchesSearch = job.title
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    const matchesShift =
-      selectedShift === "all" || job.shiftType === selectedShift;
-    const matchesDepartment =
-      selectedDepartment === "all" || job.department === selectedDepartment;
-    return matchesSearch && matchesShift && matchesDepartment;
-  });
+  // Debounce search query
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
 
-  // Pagination logic
-  const indexOfLastJob = currentPage * jobsPerPage;
-  const indexOfFirstJob = indexOfLastJob - jobsPerPage;
-  const currentJobs = filteredJobs.slice(indexOfFirstJob, indexOfLastJob);
-  const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]);
 
-  const handlePageChange = (pageNumber: number) => {
-    setCurrentPage(pageNumber);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  // Reset current page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchQuery, selectedShift, selectedDepartment]);
 
-  // Define the onViewDetails function
+  // Fetch jobs dynamically based on filters and pagination
+  useEffect(() => {
+    const fetchJobs = async () => {
+      setLoading(true);
+
+      try {
+        const response = await fetch(`/api/nurse/jobs`);
+        if (response.ok) {
+          const data = await response.json();
+          setJobListings(data);
+          console.log(data);
+        } else {
+          console.error("Failed to fetch job listings");
+          setJobListings([]);
+        }
+      } catch (error) {
+        console.error("Error fetching job listings:", error);
+        setJobListings([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchJobs();
+  }, [debouncedSearchQuery, selectedShift, selectedDepartment, currentPage]);
+
+  // Navigate to job details page
   const onViewDetails = (jobId: number) => {
     router.push(`/nurse/jobs/${jobId}`);
   };
@@ -133,7 +138,8 @@ const JobSearchPageComponent: React.FC = () => {
                   Discover Jobs
                 </h1>
                 <p className="text-lg md:text-xl text-gray-200 mt-4 max-w-2xl">
-                  Explore thousands of jobs that match your skills and preferences.
+                  Explore thousands of jobs that match your skills and
+                  preferences.
                 </p>
               </div>
 
@@ -143,7 +149,10 @@ const JobSearchPageComponent: React.FC = () => {
                   <div className="space-y-6">
                     {/* Search Input */}
                     <div className="w-full">
-                      <Label htmlFor="search" className="text-gray-700 font-semibold">
+                      <Label
+                        htmlFor="search"
+                        className="text-gray-700 font-semibold"
+                      >
                         Search Jobs
                       </Label>
                       <div className="relative mt-2">
@@ -165,7 +174,10 @@ const JobSearchPageComponent: React.FC = () => {
                     {/* Filters Row */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                       <div>
-                        <Label htmlFor="shiftType" className="text-gray-700 font-semibold">
+                        <Label
+                          htmlFor="shiftType"
+                          className="text-gray-700 font-semibold"
+                        >
                           Shift Type
                         </Label>
                         <Select
@@ -178,17 +190,24 @@ const JobSearchPageComponent: React.FC = () => {
                           <SelectContent>
                             <SelectItem value="all">All Shifts</SelectItem>
                             <SelectItem value="Day Shift">Day Shift</SelectItem>
-                            <SelectItem value="Night Shift">Night Shift</SelectItem>
+                            <SelectItem value="Night Shift">
+                              Night Shift
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
 
                       <div>
-                        <Label htmlFor="department" className="text-gray-700 font-semibold">
+                        <Label
+                          htmlFor="department"
+                          className="text-gray-700 font-semibold"
+                        >
                           Department
                         </Label>
                         <Select
-                          onValueChange={(value) => setSelectedDepartment(value)}
+                          onValueChange={(value) =>
+                            setSelectedDepartment(value)
+                          }
                           defaultValue="all"
                         >
                           <SelectTrigger className="mt-2">
@@ -196,12 +215,20 @@ const JobSearchPageComponent: React.FC = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Departments</SelectItem>
-                            <SelectItem value="Intensive Care Unit">Intensive Care Unit</SelectItem>
-                            <SelectItem value="Emergency Room">Emergency Room</SelectItem>
-                            <SelectItem value="Pediatrics">Pediatrics</SelectItem>
+                            <SelectItem value="Intensive Care Unit">
+                              Intensive Care Unit
+                            </SelectItem>
+                            <SelectItem value="Emergency Room">
+                              Emergency Room
+                            </SelectItem>
+                            <SelectItem value="Pediatrics">
+                              Pediatrics
+                            </SelectItem>
                             <SelectItem value="Surgical">Surgical</SelectItem>
                             <SelectItem value="Oncology">Oncology</SelectItem>
-                            <SelectItem value="Geriatrics">Geriatrics</SelectItem>
+                            <SelectItem value="Geriatrics">
+                              Geriatrics
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -228,16 +255,16 @@ const JobSearchPageComponent: React.FC = () => {
 
           {/* Job Listings Section */}
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            {/* Use skeletons when loading */}
             {loading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-                {Array.from({ length: 3 }, (_, index) => (
-                  <Card key={index} className="flex flex-col max-h-80 shadow-sm">
-                    <CardHeader>
-                      <Skeleton className="h-6 w-3/4 mb-2" />
-                      <Skeleton className="h-4 w-1/2" />
-                    </CardHeader>
+                {Array.from({ length: 9 }, (_, index) => (
+                  <Card
+                    key={index}
+                    className="flex flex-col max-h-80 shadow-sm"
+                  >
                     <CardContent>
+                      <Skeleton className="h-6 w-3/4 mb-2" />
+                      <Skeleton className="h-4 w-1/2 mb-4" />
                       <Skeleton className="h-4 mb-2" />
                       <Skeleton className="h-4 w-2/4 mb-2" />
                       <Skeleton className="h-4 w-1/3" />
@@ -245,9 +272,9 @@ const JobSearchPageComponent: React.FC = () => {
                   </Card>
                 ))}
               </div>
-            ) : currentJobs.length > 0 ? (
+            ) : jobListings && jobListings.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-                {currentJobs.map((job) => (
+                {jobListings.map((job) => (
                   <JobCard
                     key={job.id}
                     job={job}
@@ -259,7 +286,8 @@ const JobSearchPageComponent: React.FC = () => {
               <div className="text-center py-16 bg-white rounded-lg shadow-sm">
                 <p className="text-2xl text-gray-600">No jobs found.</p>
                 <p className="text-gray-500 mt-2">
-                  Try adjusting your search or filters to find what you're looking for.
+                  Try adjusting your search or filters to find what you're
+                  looking for.
                 </p>
               </div>
             )}
@@ -270,7 +298,10 @@ const JobSearchPageComponent: React.FC = () => {
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
-                  onPageChange={handlePageChange}
+                  onPageChange={(page) => {
+                    setCurrentPage(page);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
                 />
               </div>
             )}

@@ -41,7 +41,7 @@ export async function middleware(request: NextRequest) {
     const user = payload.user as { role: string };
 
     if (pathname == '/') {
-      if (user.role == 'admin') {
+      if (user.role.toLowerCase() == 'admin') {
         return NextResponse.redirect(new URL('/admin/dashboard', request.url));
       } else {
         return NextResponse.redirect(new URL('/nurse/dashboard', request.url));
@@ -49,11 +49,11 @@ export async function middleware(request: NextRequest) {
     }
 
     // 4. Check admin access
-    if (pathname.startsWith('/admin') && user.role !== 'admin') {
+    if (pathname.startsWith('/admin') && user.role.toLowerCase() !== 'admin') {
       return NextResponse.redirect(new URL('/nurse/dashboard', request.url));
     }
 
-    if (pathname.startsWith('/nurse') && user.role == 'admin') {
+    if (pathname.startsWith('/nurse') && user.role.toLowerCase() == 'admin') {
       return NextResponse.redirect(new URL('/admin/dashboard', request.url));
     } // Added closing brace here
 

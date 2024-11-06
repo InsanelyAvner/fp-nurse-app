@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import "./globals.css";
+import { UserContextProvider } from "./context/UserContext";
 
 export const metadata: Metadata = {
   title: "Farrer Park Hospital",
@@ -13,11 +14,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" style={{overflowY: "hidden"}}>
-      <body
-        className={GeistSans.className}
-      >
-        {children}
+    <html lang="en" style={{ overflowY: "hidden" }}>
+      <body className={GeistSans.className}>
+        <UserContextProvider>{children}</UserContextProvider>
       </body>
     </html>
   );

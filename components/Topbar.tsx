@@ -2,10 +2,10 @@
 
 'use client'
 
-import React from 'react'
-import { Bell, LogOut, Mail, Settings, User, Menu } from 'lucide-react'
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+import React, { useContext } from 'react';
+import { Bell, LogOut, Settings, User, Menu } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,9 +13,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 
-import { useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation';
+import { Skeleton } from '@/components/ui/skeleton';
+import { UserContext } from "@/app/context/UserContext";
 
 interface TopbarProps {
   role: 'admin' | 'nurse';
@@ -24,10 +26,28 @@ interface TopbarProps {
 
 const Topbar: React.FC<TopbarProps> = ({ role, toggleSidebar }) => {
   const router = useRouter();
+  const { user } = useContext(UserContext);
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        router.push('/login');
+      } else {
+        throw new Error('Failed to logout');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   return (
     <header className="bg-white shadow-sm z-10">
       <div className="flex justify-between items-center py-4 px-4 sm:px-6 lg:px-8">
-
         {/* Sidebar Toggle and Title */}
         <div className="flex items-center">
           <Button
@@ -43,7 +63,7 @@ const Topbar: React.FC<TopbarProps> = ({ role, toggleSidebar }) => {
           </h1>
         </div>
 
-        {/* Notifications, Messages, and User Dropdown */}
+        {/* Notifications and User Dropdown */}
         <div className="flex items-center space-x-4">
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative">
@@ -59,47 +79,55 @@ const Topbar: React.FC<TopbarProps> = ({ role, toggleSidebar }) => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src="/avatar.png" alt="User Avatar" />
-                  <AvatarFallback>US</AvatarFallback>
+                  {!user ? (
+                    <AvatarFallback>?</AvatarFallback>
+                  ) : (
+                    <>
+                      <AvatarImage src={`/avatars/${user.id}.png`} alt={`${user.name} Avatar`} />
+                      <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                    </>
+                  )}
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-semibold leading-none">
-                    John Doe
-                  </p>
-                  <p className="text-xs leading-none text-gray-500">
-                    john.doe@example.com
-                  </p>
-                </div>
+                {!user ? (
+                  <div className="flex flex-col space-y-1">
+                    <Skeleton className="h-4 w-32 mb-2" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                ) : (
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-semibold leading-none">
+                      {user.name}
+                    </p>
+                    <p className="text-xs leading-none text-gray-500">
+                      {user.email}
+                    </p>
+                  </div>
+                )}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/nurse/profile')}>
                 <User className="mr-2 h-4 w-4" />
                 <span>Profile</span>
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/nurse/settings')}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={
-                () => {
-                  document.cookie = 'token=;expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-                  router.push('/login');
-                }
-              }>
+              <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4 text-red-500" />
-                <span >Log out</span>
+                <span>Log out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
     </header>
-  )
-}
+  );
+};
 
-export default Topbar
+export default Topbar;

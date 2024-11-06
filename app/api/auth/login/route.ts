@@ -1,18 +1,17 @@
 import { SignJWT } from "jose";
 import cookie from "cookie";
 import { NextResponse } from "next/server";
+import prisma from "@/lib/db";
+import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
   const { email, password, rememberMe } = await req.json();
 
-  const userRole = password === "admin" ? "admin" : "nurse"
   try {
-    const user = {
-      id: 1,
-      email: email,
-      name: "Test",
-      role: userRole,
-    };
+    // Check if the user exists in the database
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
 
     if (!user) {
       return NextResponse.json(
@@ -21,15 +20,27 @@ export async function POST(req: Request) {
       );
     }
 
-    // Uncomment and adjust the following if password verification is needed
-    // const isMatch = await bcrypt.compare(password, user.password);
-    // if (!isMatch) {
-    //   return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
-    // }
+    // Verify the password using bcrypt
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return NextResponse.json(
+        { message: "Invalid email or password" },
+        { status: 401 }
+      );
+    }
+
+    // Create the JWT payload, including user details
+    const tokenPayload = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    };
 
     const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
-    const token = await new SignJWT({ user })
+    // Generate JWT
+    const token = await new SignJWT({ user: tokenPayload })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
       .setExpirationTime(rememberMe ? "365d" : "1h")
@@ -58,5 +69,7 @@ export async function POST(req: Request) {
       { message: "Internal Server Error" },
       { status: 500 }
     );
+  } finally {
+    await prisma.$disconnect();
   }
 }

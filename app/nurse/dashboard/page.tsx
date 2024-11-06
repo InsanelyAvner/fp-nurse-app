@@ -1,20 +1,20 @@
-// NurseDashboardComponent.tsx
+// components/NurseDashboardComponent.tsx
 
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-
-import { useRouter } from 'next/navigation';
-import Sidebar from '@/components/Sidebar';
-import Topbar from '@/components/Topbar';
-import QuickStatCard from '@/components/QuickStatCard';
-import JobCard from '@/components/JobCard';
-import { Briefcase, ClipboardList, Clock, Lightbulb } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import Progress from '@/components/ui/progress';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from "@/components/ui/skeleton"
+import React, { useState, useEffect, useContext } from "react";
+import { useRouter } from "next/navigation";
+import Sidebar from "@/components/Sidebar";
+import Topbar from "@/components/Topbar";
+import QuickStatCard from "@/components/QuickStatCard";
+import JobCard from "@/components/JobCard";
+import { Briefcase, ClipboardList, Clock, Lightbulb } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import Progress from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { UserContext } from "@/app/context/UserContext";
 
 interface Job {
   id: number;
@@ -41,92 +41,18 @@ interface Shift {
   time: string;
 }
 
-const jobMatches: Job[] = [
-  {
-    id: 1,
-    title: "ICU Nurse",
-    facility: "Farrer Park Hospital",
-    date: "2023-06-15",
-    time: "7:00 AM - 7:00 PM",
-    payRate: "$45/hr",
-    urgent: true,
-    matchingScore: 92,
-    requiredSkills: ["Critical Care", "Advanced Life Support", "test1", "test2", "test3", "test4", "test5", "test6", "test7", "test8", "test9", "test10", "test11", "test12", "test13", "test14"],
-    // This is for testing how it reacts to long elements.
-  },
-  {
-    id: 2,
-    title: "ER Nurse",
-    facility: "Farrer Park Hospital",
-    date: "2023-06-16",
-    time: "8:00 AM - 8:00 PM",
-    payRate: "$50/hr",
-    urgent: false,
-    matchingScore: 85,
-    requiredSkills: ["Emergency Care", "Triage"],
-  },
-  {
-    id: 3,
-    title: "Pediatric Nurse",
-    facility: "Farrer Park Hospital",
-    date: "2023-06-17",
-    time: "9:00 AM - 5:00 PM",
-    payRate: "$40/hr",
-    urgent: true,
-    matchingScore: 78,
-    requiredSkills: ["Childcare", "Pediatric Advanced Life Support"],
-  },
-  {
-    id: 4,
-    title: "Surgical Nurse",
-    facility: "Farrer Park Hospital",
-    date: "2023-06-18",
-    time: "6:00 AM - 2:00 PM",
-    payRate: "$55/hr",
-    urgent: false,
-    matchingScore: 88,
-    requiredSkills: ["Operating Room", "Sterile Techniques"],
-  },
-];
-
-const notifications: Notification[] = [
-  {
-    id: 1,
-    message: "New job match: ICU Nurse at Farrer Park Hospital",
-    timestamp: "2 hours ago",
-  },
-  {
-    id: 2,
-    message: "Your application for ER Nurse position has been viewed",
-    timestamp: "1 day ago",
-  },
-  {
-    id: 3,
-    message: "Reminder: Upcoming shift tomorrow at 8:00 AM",
-    timestamp: "3 hours ago",
-  },
-];
-
-const upcomingShifts: Shift[] = [
-  {
-    id: 1,
-    facility: "Farrer Park Hospital",
-    date: "2023-06-15",
-    time: "7:00 AM - 7:00 PM",
-  },
-  {
-    id: 2,
-    facility: "Farrer Park Hospital",
-    date: "2023-06-18",
-    time: "8:00 AM - 8:00 PM",
-  },
-];
-
 const NurseDashboardComponent: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [profileCompletion, setProfileCompletion] = useState(60); // Example value
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  const [jobMatches, setJobMatches] = useState<Job[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [upcomingShifts, setUpcomingShifts] = useState<Shift[]>([]);
+
+  // Use user from UserContext
+  const { user } = useContext(UserContext);
 
   useEffect(() => {
     const handleResize = () => {
@@ -136,103 +62,72 @@ const NurseDashboardComponent: React.FC = () => {
         setIsSidebarOpen(false);
       }
     };
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
     handleResize();
-    return () => window.removeEventListener('resize', handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Fetch data from API routes when the component mounts
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch jobs, notifications, and shifts in parallel
+        const [jobsResponse, notificationsResponse, shiftsResponse] =
+          await Promise.all([
+            fetch("/api/nurse/jobs", {
+              method: "GET",
+              credentials: "include",
+            }),
+            fetch("/api/nurse/notifications", {
+              method: "GET",
+              credentials: "include",
+            }),
+            fetch("/api/nurse/shifts", {
+              method: "GET",
+              credentials: "include",
+            }),
+          ]);
+
+        if (
+          !jobsResponse.ok ||
+          !notificationsResponse.ok ||
+          !shiftsResponse.ok
+        ) {
+          throw new Error("Failed to fetch data");
+        }
+
+        const [jobsData, notificationsData, shiftsData] = await Promise.all([
+          jobsResponse.json(),
+          notificationsResponse.json(),
+          shiftsResponse.json(),
+        ]);
+
+        setJobMatches(jobsData);
+        setNotifications(notificationsData);
+        setUpcomingShifts(shiftsData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   const handleViewDetails = (jobId: number) => {
-    // Navigate to the job details page
     router.push(`/nurse/jobs/${jobId}`);
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-screen bg-gray-100 overflow-hidden">
-        <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} role="nurse" />
-
-        {/* Overlay for mobile sidebar */}
-        {isSidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black opacity-50 z-20 md:hidden"
-            onClick={toggleSidebar}
-          ></div>
-        )}
-
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Topbar toggleSidebar={toggleSidebar} role="nurse" />
-          <main className="flex-1 overflow-y-auto bg-gray-100 p-4">
-            <div className="max-w-7xl mx-auto">
-              {/* Welcome Message Skeleton */}
-              <Skeleton className="h-8 w-48 mb-4" />
-              <Skeleton className="h-6 w-3/4 mb-4" />
-
-              {/* Profile Completion Prompt Skeleton */}
-              <Skeleton className="h-16 w-full mb-6" />
-
-              {/* Quick Stats Skeleton */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-              </div>
-
-              {/* Job Matches Skeleton */}
-              <Card className="mb-8">
-                <CardHeader>
-                  <CardTitle><Skeleton className="h-6 w-1/2" /></CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[325px]">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <Skeleton className="h-32 w-full" />
-                      <Skeleton className="h-32 w-full" />
-                      <Skeleton className="h-32 w-full" />
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-
-              {/* Notifications and Upcoming Shifts Skeleton */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <Card>
-                  <CardHeader>
-                    <CardTitle><Skeleton className="h-6 w-1/2" /></CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ScrollArea className="h-[200px]">
-                      <Skeleton className="h-8 w-full mb-4" />
-                      <Skeleton className="h-8 w-full mb-4" />
-                      <Skeleton className="h-8 w-full mb-4" />
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle><Skeleton className="h-6 w-1/2" /></CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ScrollArea className="h-[200px]">
-                      <Skeleton className="h-8 w-full mb-4" />
-                      <Skeleton className="h-8 w-full mb-4" />
-                      <Skeleton className="h-8 w-full mb-4" />
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
-      <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} role="nurse" />
+      <Sidebar
+        isSidebarOpen={isSidebarOpen}
+        toggleSidebar={toggleSidebar}
+        role="nurse"
+      />
 
       {/* Overlay for mobile sidebar */}
       {isSidebarOpen && (
@@ -250,9 +145,14 @@ const NurseDashboardComponent: React.FC = () => {
         <main className="flex-1 overflow-y-auto bg-gray-100 p-4">
           <div className="max-w-7xl mx-auto">
             {/* Welcome Message */}
-            <h1 className="text-2xl font-semibold text-gray-900 mb-6">
-              Welcome back, <span className="text-[#9d2235]">Sarah</span>!
-            </h1>
+            {loading || !user ? (
+              <Skeleton className="h-8 w-48 mb-4" />
+            ) : (
+              <h1 className="text-2xl font-semibold text-gray-900 mb-6">
+                Welcome back,{" "}
+                <span className="text-[#9d2235]">{user.name}</span>!
+              </h1>
+            )}
 
             {/* Enhanced Profile Completion Prompt */}
             {profileCompletion < 100 && (
@@ -267,10 +167,13 @@ const NurseDashboardComponent: React.FC = () => {
                     {/* Text and Button Wrapper */}
                     <div className="flex-1">
                       {/* Text Content */}
-                      <h2 className="text-lg font-semibold mb-2">Complete Your Profile</h2>
+                      <h2 className="text-lg font-semibold mb-2">
+                        Complete Your Profile
+                      </h2>
                       <p className="text-sm mb-4">
-                        Your profile is <strong>{profileCompletion}%</strong> complete. Completing
-                        your profile helps us match you with the best job opportunities!
+                        Your profile is <strong>{profileCompletion}%</strong>{" "}
+                        complete. Completing your profile helps us match you
+                        with the best job opportunities!
                       </p>
                       <Progress
                         value={profileCompletion}
@@ -284,8 +187,8 @@ const NurseDashboardComponent: React.FC = () => {
                       <Button
                         variant="default"
                         className="w-full md:w-auto"
-                        style={{ backgroundColor: '#fff', color: '#9d2235' }}
-                        onClick={() => router.push('/nurse/profile')}
+                        style={{ backgroundColor: "#fff", color: "#9d2235" }}
+                        onClick={() => router.push("/nurse/profile")}
                       >
                         Complete Now
                       </Button>
@@ -295,79 +198,177 @@ const NurseDashboardComponent: React.FC = () => {
               </div>
             )}
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <QuickStatCard
-                icon={<Briefcase size={24} color="#9d2235" />}
-                title="New Job Matches"
-                value={jobMatches.length.toString()}
-                accentColor="#9d2235"
-              />
-              <QuickStatCard
-                icon={<ClipboardList size={24} color="#9d2235" />}
-                title="Pending Applications"
-                value="2"
-                accentColor="#9d2235"
-              />
-              <QuickStatCard
-                icon={<Clock size={24} color="#9d2235" />}
-                title="Upcoming Shifts"
-                value={upcomingShifts.length.toString()}
-                accentColor="#9d2235"
-              />
-            </div>
+            {loading ? (
+              // Loading Skeletons
+              <div>
+                {/* Quick Stats Skeleton */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                </div>
 
-            {/* Job Matches */}
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle>Recommended Jobs for You</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[325px]">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {jobMatches.map((job) => (
-                      <JobCard key={job.id} job={job} onViewDetails={handleViewDetails} />
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-
-            {/* Notifications and Upcoming Shifts */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Notifications</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[200px]">
-                    {notifications.map((notification) => (
-                      <div key={notification.id} className="mb-4 last:mb-0">
-                        <p className="text-sm font-medium">{notification.message}</p>
-                        <p className="text-xs text-gray-500">{notification.timestamp}</p>
+                {/* Job Matches Skeleton */}
+                <Card className="mb-8">
+                  <CardHeader>
+                    <CardTitle>
+                      <Skeleton className="h-6 w-1/2" />
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-[325px]">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <Skeleton className="h-32 w-full" />
+                        <Skeleton className="h-32 w-full" />
+                        <Skeleton className="h-32 w-full" />
                       </div>
-                    ))}
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Upcoming Shifts</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[200px]">
-                    {upcomingShifts.map((shift) => (
-                      <div key={shift.id} className="mb-4 last:mb-0">
-                        <p className="text-sm font-medium">{shift.facility}</p>
-                        <p className="text-xs text-grays-500">
-                          {shift.date} • {shift.time}
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+
+                {/* Notifications and Upcoming Shifts Skeleton */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>
+                        <Skeleton className="h-6 w-1/2" />
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ScrollArea className="h-[200px]">
+                        <Skeleton className="h-8 w-full mb-4" />
+                        <Skeleton className="h-8 w-full mb-4" />
+                        <Skeleton className="h-8 w-full mb-4" />
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>
+                        <Skeleton className="h-6 w-1/2" />
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ScrollArea className="h-[200px]">
+                        <Skeleton className="h-8 w-full mb-4" />
+                        <Skeleton className="h-8 w-full mb-4" />
+                        <Skeleton className="h-8 w-full mb-4" />
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            ) : (
+              // Main Content
+              <div>
+                {/* Quick Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                  <QuickStatCard
+                    icon={<Briefcase size={24} color="#9d2235" />}
+                    title="New Job Matches"
+                    value={jobMatches.length.toString()}
+                    accentColor="#9d2235"
+                  />
+                  <QuickStatCard
+                    icon={<ClipboardList size={24} color="#9d2235" />}
+                    title="Pending Applications"
+                    value="2" // You can replace "2" with actual data when available
+                    accentColor="#9d2235"
+                  />
+                  <QuickStatCard
+                    icon={<Clock size={24} color="#9d2235" />}
+                    title="Upcoming Shifts"
+                    value={upcomingShifts.length.toString()}
+                    accentColor="#9d2235"
+                  />
+                </div>
+
+                {/* Job Matches */}
+                <Card className="mb-8">
+                  <CardHeader>
+                    <CardTitle>Recommended Jobs for You</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {jobMatches.length > 0 ? (
+                      <ScrollArea className="h-[325px]">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {jobMatches.map((job) => (
+                            <JobCard
+                              key={job.id}
+                              job={job}
+                              onViewDetails={handleViewDetails}
+                            />
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        No job matches found.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Notifications and Upcoming Shifts */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Recent Notifications</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {notifications.length > 0 ? (
+                        <ScrollArea className="h-[200px]">
+                          {notifications.map((notification) => (
+                            <div
+                              key={notification.id}
+                              className="mb-4 last:mb-0"
+                            >
+                              <p className="text-sm font-medium">
+                                {notification.message}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {new Date(
+                                  notification.timestamp
+                                ).toLocaleString()}
+                              </p>
+                            </div>
+                          ))}
+                        </ScrollArea>
+                      ) : (
+                        <p className="text-sm text-gray-500">
+                          No notifications.
                         </p>
-                      </div>
-                    ))}
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Upcoming Shifts</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {upcomingShifts.length > 0 ? (
+                        <ScrollArea className="h-[200px]">
+                          {upcomingShifts.map((shift) => (
+                            <div key={shift.id} className="mb-4 last:mb-0">
+                              <p className="text-sm font-medium">
+                                {shift.facility}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {shift.date} • {shift.time}
+                              </p>
+                            </div>
+                          ))}
+                        </ScrollArea>
+                      ) : (
+                        <p className="text-sm text-gray-500">
+                          No upcoming shifts.
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
           </div>
         </main>
       </div>

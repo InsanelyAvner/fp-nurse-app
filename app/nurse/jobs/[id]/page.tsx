@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar, Clock, DollarSign, MapPin, Briefcase, ChevronLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton'; // Import your Skeleton component
+import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
 
 interface Job {
@@ -49,7 +49,7 @@ const JobDetailsPageComponent: React.FC = () => {
           const jobData: Job = await response.json();
           setJob(jobData);
         } else {
-          setJob(null); // Set job to null if not found
+          setJob(null);
         }
       } catch (error) {
         console.error("Failed to fetch job listing:", error);
@@ -59,7 +59,9 @@ const JobDetailsPageComponent: React.FC = () => {
       }
     };
 
-    fetchJob();
+    if (id) {
+      fetchJob();
+    }
   }, [id]);
 
   const toggleSidebar = () => {
@@ -89,7 +91,6 @@ const JobDetailsPageComponent: React.FC = () => {
 
             {/* Conditional rendering for loading, job not found, or job details */}
             {loading ? (
-              // Skeleton loader for loading state
               <Card className="shadow-lg rounded-lg overflow-hidden">
                 <CardHeader className="p-6">
                   <Skeleton className="h-10 w-1/2 mb-4" />
@@ -102,11 +103,10 @@ const JobDetailsPageComponent: React.FC = () => {
                 </CardContent>
               </Card>
             ) : job ? (
-              // Job Details Card when job is found
               <Card className="shadow-lg rounded-lg overflow-hidden">
                 <div className="relative h-56 md:h-36">
                   <Image
-                    src="/bg.png"
+                    src="/images/bg.png"
                     alt={job.facilityInfo.name}
                     layout="fill"
                     objectFit="cover"
@@ -131,31 +131,31 @@ const JobDetailsPageComponent: React.FC = () => {
                   <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex items-center text-gray-600">
                       <Calendar className="h-5 w-5 mr-2" />
-                      <span className="font-medium">Date:</span> {job.date}
+                      <span className="font-medium">Date:&nbsp;</span> {job.date}
                     </div>
                     <div className="flex items-center text-gray-600">
                       <Clock className="h-5 w-5 mr-2" />
-                      <span className="font-medium">Time:</span> {job.time}
+                      <span className="font-medium">Time:&nbsp;</span> {job.time}
                     </div>
                     <div className="flex items-center text-gray-600">
                       <Briefcase className="h-5 w-5 mr-2" />
-                      <span className="font-medium">Shift Type:</span> {job.shiftType}
+                      <span className="font-medium">Shift Type:&nbsp;</span> {job.shiftType}
                     </div>
                     <div className="flex items-center text-gray-600">
                       <DollarSign className="h-5 w-5 mr-2" />
-                      <span className="font-medium">Pay Rate:</span> {job.payRate}
+                      <span className="font-medium">Pay Rate:&nbsp;</span> {job.payRate}
                     </div>
                     <div className="flex items-start text-gray-600">
                       <MapPin className="h-5 w-5 mr-2 mt-1" />
                       <div>
-                        <span className="font-medium">Location:</span>
-                        <p>{job.facilityInfo.address}</p>
+                        <span className="font-medium">Location:&nbsp;</span>
+                        <p>{job.facilityInfo.address == '' ? "Farrer Park Hospital" : job.facilityInfo.address }</p>
                       </div>
                     </div>
                     <div className="flex items-start text-gray-600">
                       <Briefcase className="h-5 w-5 mr-2 mt-1" />
                       <div>
-                        <span className="font-medium">Department:</span>
+                        <span className="font-medium">Department:&nbsp;</span>
                         <p>{job.department}</p>
                       </div>
                     </div>
@@ -166,14 +166,14 @@ const JobDetailsPageComponent: React.FC = () => {
                     <p className="text-gray-700">{job.description}</p>
                   </div>
 
-                  <div className="mt-6">
+                  {/* <div className="mt-6">
                     <h3 className="text-xl font-semibold text-gray-800 mb-2">Responsibilities</h3>
                     <ul className="list-disc list-inside text-gray-700 space-y-1">
                       {job.responsibilities.map((item, index) => (
                         <li key={index}>{item}</li>
                       ))}
                     </ul>
-                  </div>
+                  </div> */}
 
                   <div className="mt-6">
                     <h3 className="text-xl font-semibold text-gray-800 mb-2">Required Skills & Certifications</h3>
@@ -190,7 +190,6 @@ const JobDetailsPageComponent: React.FC = () => {
                 </CardContent>
               </Card>
             ) : (
-              // Job not found message
               <div className="text-center py-16 bg-white rounded-lg shadow-sm">
                 <p className="text-2xl text-gray-600">Job not found.</p>
                 <p className="text-gray-500 mt-2">Try checking the job ID or returning to the job listings.</p>

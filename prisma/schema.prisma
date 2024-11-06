@@ -1,0 +1,115 @@
+// schema.prisma
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // Ensure you have a DATABASE_URL set in your environment variables
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum JobStatus {
+  ACTIVE
+  CLOSED
+  DRAFT
+}
+
+enum ApplicationStatus {
+  APPLIED
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+// User Model - Represents both Admins and Nurses
+model User {
+  id             Int              @id @default(autoincrement())
+  name           String
+  email          String           @unique
+  password       String
+  role           Role             @default(USER)
+  bio            String?
+  experience     Int?             // Years of experience
+  certifications String[]         @default([])
+  skills         Skill[]          @relation("UserSkills")
+  applications   Application[]
+  notifications  Notification[]
+  shifts         Shift[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([role]) // Index on role for efficient queries
+}
+
+// Skill Model - Represents Skills that Users have and Jobs require
+model Skill {
+  id     Int     @id @default(autoincrement())
+  name   String  @unique
+  users  User[]  @relation("UserSkills")
+  jobs   Job[]   @relation("JobSkills")
+}
+
+// Job Model - Represents Job Postings Created by Admins
+model Job {
+  id             Int            @id @default(autoincrement())
+  title          String
+  description    String
+  facility       String
+  department     String
+  shiftType      String
+  startDateTime  DateTime
+  endDateTime    DateTime
+  payRate        String
+  urgent         Boolean        @default(false)
+  status         JobStatus      @default(ACTIVE)
+  requiredSkills Skill[]        @relation("JobSkills")
+  applications   Application[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([status, startDateTime]) // Composite index for querying active jobs
+}
+
+// Application Model - Represents Applications Submitted by Nurses
+model Application {
+  id            Int               @id @default(autoincrement())
+  user          User              @relation(fields: [userId], references: [id])
+  userId        Int
+  job           Job               @relation(fields: [jobId], references: [id])
+  jobId         Int
+  status        ApplicationStatus @default(APPLIED)
+  matchingScore Int               // Added matchingScore for job matching
+  appliedAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@unique([userId, jobId]) // Prevents duplicate applications to the same job
+}
+
+// Notification Model - Represents Notifications for Users
+model Notification {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  message   String
+  timestamp DateTime @default(now())
+
+  @@index([userId, timestamp]) // Index for efficient retrieval of recent notifications
+}
+
+// Shift Model - Represents Upcoming Shifts for Users
+model Shift {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  facility  String
+  date      DateTime
+  time      String // e.g., "7:00 AM - 7:00 PM"
+
+  @@index([userId, date]) // Index for querying upcoming shifts
+}

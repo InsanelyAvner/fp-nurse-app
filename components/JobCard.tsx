@@ -1,27 +1,29 @@
-// components/JobCard.tsx
+// JobCard.tsx
 
 import React from "react";
 import {
   Card,
-  CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
+  CardContent,
+  CardFooter,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from "@/components/ui/button";
+import { Briefcase, Clock, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 
 interface Job {
   id: number;
   title: string;
   facility: string;
-  date: string;
+  date: string | Date;
   time: string;
   payRate: string;
   urgent: boolean;
   requiredSkills: string[];
+  shiftType: string;
+  department: string;
 }
 
 interface JobCardProps {
@@ -31,48 +33,59 @@ interface JobCardProps {
 
 const JobCard: React.FC<JobCardProps> = ({ job, onViewDetails }) => {
   return (
-    <Card className="flex flex-col max-h-80 hover:shadow-md transition-shadow duration-300">
-      <ScrollArea className="flex-grow p-1">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold flex items-center">
+    <Card className="hover:shadow-lg transition-shadow duration-300 flex flex-col justify-between bg-white rounded-lg">
+      <div>
+        <CardHeader className="flex flex-col space-y-2 p-4">
+          <CardTitle className="text-xl font-semibold flex items-center justify-between">
             <span>{job.title}</span>
-            {job.urgent && (
-              <span className="ml-2 bg-red-100 text-red-800 text-xs font-semibold px-2.5 py-0.5 rounded">
-                Urgent
-              </span>
-            )}
+            {job.urgent && <Badge variant="destructive">Urgent</Badge>}
           </CardTitle>
-          <CardDescription>{job.facility}</CardDescription>
+          <p className="text-gray-600">{job.facility}</p>
         </CardHeader>
-        
-        <CardContent>
-          <p className="text-sm mb-2 flex items-center text-gray-600">
-            <Clock size={16} className="mr-1" /> {job.date} • {job.time}
-          </p>
-          <p className="text-sm font-semibold mb-2 text-gray-800">
-            Pay Rate: {job.payRate}
-          </p>
-          <p className="text-sm mb-2 text-gray-800">
-            Required skills: <br />
-          </p>
-          <div className="flex flex-wrap gap-2 mt-2">
-            {job.requiredSkills.map((skill) => (
-              <span
-                key={skill}
-                className="inline-block bg-gray-100 text-gray-800 text-xs px-2 py-0.5 rounded-full"
-              >
-                {skill}
-              </span>
-            ))}
+        <CardContent className="px-4 pb-4">
+          <div className="text-sm text-gray-600 space-y-2">
+            <p className="flex items-center">
+              <Briefcase className="mr-2 h-4 w-4 text-gray-500" />
+              {job.department}
+            </p>
+            <p className="flex items-center">
+              <Clock className="mr-2 h-4 w-4 text-gray-500" />
+              {job.shiftType} Shift
+            </p>
+            <p className="flex items-center">
+              <CalendarIcon className="mr-2 h-4 w-4 text-gray-500" />
+              {format(new Date(job.date), "PPP")}
+            </p>
+            <p className="flex items-center">
+              <Clock className="mr-2 h-4 w-4 text-gray-500" />
+              {job.time}
+            </p>
+            <p className="font-medium text-gray-800">
+              Pay Rate: {job.payRate}
+            </p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {job.requiredSkills.slice(0, 3).map((skill) => (
+                <Badge key={skill} variant="secondary" className="text-xs">
+                  {skill}
+                </Badge>
+              ))}
+              {job.requiredSkills.length > 3 && (
+                <Badge variant="secondary" className="text-xs">
+                  +{job.requiredSkills.length - 3} more
+                </Badge>
+              )}
+            </div>
           </div>
         </CardContent>
-      </ScrollArea>
-      
-      <div className="pt-0 p-4">
-        <Button className="w-full mt-5" onClick={() => onViewDetails(job.id)}>
+      </div>
+      <CardFooter className="px-4 py-3 border-t border-gray-200">
+        <Button
+          className="w-full"
+          onClick={() => onViewDetails(job.id)}
+        >
           View Details
         </Button>
-      </div>
+      </CardFooter>
     </Card>
   );
 };

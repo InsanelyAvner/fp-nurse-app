@@ -2,7 +2,7 @@
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL") // Ensure you have a DATABASE_URL set in your environment variables
+  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -27,24 +27,44 @@ enum ApplicationStatus {
   WITHDRAWN
 }
 
-// User Model - Represents both Admins and Nurses
-model User {
-  id             Int              @id @default(autoincrement())
-  name           String
-  email          String           @unique
-  password       String
-  role           Role             @default(USER)
-  bio            String?
-  experience     Int?             // Years of experience
-  certifications String[]         @default([])
-  skills         Skill[]          @relation("UserSkills")
-  applications   Application[]
-  notifications  Notification[]
-  shifts         Shift[]
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+enum DocumentType {
+  RESUME
+  LICENSE
+  CERTIFICATION
+  OTHER
+}
 
-  @@index([role]) // Index on role for efficient queries
+model User {
+  id                Int               @id @default(autoincrement())
+  firstName         String
+  lastName          String
+  dob               DateTime?
+  gender            String
+  contactNumber     String
+  email             String            @unique
+  address           String
+  role              Role              @default(USER)
+  password          String
+  licenseNumber     String?
+  licenseExpiration DateTime?
+  yearsOfExperience Int?
+  education         String?
+  certifications    String[]          @default([]) // Add this line
+  specializations   String[]          @default([])
+  languages         String[]          @default([])
+  shiftPreferences  String[]          @default([])
+  bio               String?
+  skills            Skill[]           @relation("UserSkills")
+  experiences       Experience[]
+  documents         Document[]
+  applications      Application[]
+  notifications     Notification[]
+  shifts            Shift[]
+  profilePictureUrl String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([role])
 }
 
 // Skill Model - Represents Skills that Users have and Jobs require
@@ -73,7 +93,7 @@ model Job {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  @@index([status, startDateTime]) // Composite index for querying active jobs
+  @@index([status, startDateTime])
 }
 
 // Application Model - Represents Applications Submitted by Nurses
@@ -84,11 +104,11 @@ model Application {
   job           Job               @relation(fields: [jobId], references: [id])
   jobId         Int
   status        ApplicationStatus @default(APPLIED)
-  matchingScore Int               // Added matchingScore for job matching
+  matchingScore Int
   appliedAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
-  @@unique([userId, jobId]) // Prevents duplicate applications to the same job
+  @@unique([userId, jobId])
 }
 
 // Notification Model - Represents Notifications for Users
@@ -99,7 +119,7 @@ model Notification {
   message   String
   timestamp DateTime @default(now())
 
-  @@index([userId, timestamp]) // Index for efficient retrieval of recent notifications
+  @@index([userId, timestamp])
 }
 
 // Shift Model - Represents Upcoming Shifts for Users
@@ -111,5 +131,32 @@ model Shift {
   date      DateTime
   time      String // e.g., "7:00 AM - 7:00 PM"
 
-  @@index([userId, date]) // Index for querying upcoming shifts
+  @@index([userId, date])
+}
+
+// Experience Model - Represents Work Experiences of Users
+model Experience {
+  id              Int      @id @default(autoincrement())
+  user            User     @relation(fields: [userId], references: [id])
+  userId          Int
+  facilityName    String
+  position        String
+  department      String
+  startDate       DateTime?
+  endDate         DateTime?
+  responsibilities String
+
+  @@index([userId, facilityName])
+}
+
+// Document Model - Represents Documents Uploaded by Users
+model Document {
+  id         Int          @id @default(autoincrement())
+  user       User         @relation(fields: [userId], references: [id])
+  userId     Int
+  type       DocumentType
+  fileUrl    String       // URL or path to the uploaded document
+  uploadedAt DateTime     @default(now())
+
+  @@index([userId, type])
 }

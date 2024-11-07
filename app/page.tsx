@@ -1,7 +1,7 @@
 const Skibidi: React.FC = () => {
     return (
         <div>
-            <h1>Skibidi</h1>
+            <h1>My fellow skibidi sigma, you're not supposed to be here!</h1>
         </div>
     );
 }

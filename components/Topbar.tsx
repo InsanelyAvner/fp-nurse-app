@@ -83,8 +83,8 @@ const Topbar: React.FC<TopbarProps> = ({ role, toggleSidebar }) => {
                     <AvatarFallback>?</AvatarFallback>
                   ) : (
                     <>
-                      <AvatarImage src={`/avatars/${user.id}.png`} alt={`${user.name} Avatar`} />
-                      <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                      <AvatarImage src={`/avatars/${user.id}.png`} alt={`${user.firstName} Avatar`} />
+                      <AvatarFallback>{user.firstName.charAt(0).toUpperCase()}</AvatarFallback>
                     </>
                   )}
                 </Avatar>
@@ -100,7 +100,7 @@ const Topbar: React.FC<TopbarProps> = ({ role, toggleSidebar }) => {
                 ) : (
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-semibold leading-none">
-                      {user.name}
+                      {user.firstName} {user.lastName}
                     </p>
                     <p className="text-xs leading-none text-gray-500">
                       {user.email}

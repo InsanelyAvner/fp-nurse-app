@@ -41,9 +41,11 @@ const JobSearchPageComponent: React.FC = () => {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [selectedShift, setSelectedShift] = useState("all");
   const [selectedDepartment, setSelectedDepartment] = useState("all");
+  const [selectedPayRate, setSelectedPayRate] = useState("all"); // New Pay Rate Filter
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [jobListings, setJobListings] = useState<Job[]>([]);
+  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
 
   const jobsPerPage = 9;
@@ -65,33 +67,100 @@ const JobSearchPageComponent: React.FC = () => {
   // Reset current page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, selectedShift, selectedDepartment]);
+  }, [debouncedSearchQuery, selectedShift, selectedDepartment, selectedPayRate]);
 
-  // Fetch jobs dynamically based on filters and pagination
+  // Fetch jobs dynamically when component mounts
   useEffect(() => {
     const fetchJobs = async () => {
       setLoading(true);
 
       try {
-        const response = await fetch(`/api/nurse/jobs`);
+        const response = await fetch(`/api/nurse/jobs`, {
+          method: 'GET',
+          credentials: 'include', // Ensure cookies are sent
+        });
         if (response.ok) {
-          const data = await response.json();
+          const data: Job[] = await response.json();
           setJobListings(data);
-          console.log(data);
+          setFilteredJobs(data); // Initialize filteredJobs with all jobs
+          setTotalPages(Math.ceil(data.length / jobsPerPage));
         } else {
           console.error("Failed to fetch job listings");
           setJobListings([]);
+          setFilteredJobs([]);
+          setTotalPages(1);
         }
       } catch (error) {
         console.error("Error fetching job listings:", error);
         setJobListings([]);
+        setFilteredJobs([]);
+        setTotalPages(1);
       } finally {
         setLoading(false);
       }
     };
 
     fetchJobs();
-  }, [debouncedSearchQuery, selectedShift, selectedDepartment, currentPage]);
+  }, []);
+
+  // Apply filters and search
+  useEffect(() => {
+    const applyFilters = () => {
+      let updatedJobs = [...jobListings];
+
+      // Apply Search Filter
+      if (debouncedSearchQuery.trim() !== "") {
+        updatedJobs = updatedJobs.filter((job) =>
+          job.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+        );
+      }
+
+      // Apply Shift Type Filter
+      if (selectedShift !== "all") {
+        updatedJobs = updatedJobs.filter(
+          (job) => job.shiftType.toLowerCase() === selectedShift.toLowerCase()
+        );
+      }
+
+      // Apply Department Filter
+      if (selectedDepartment !== "all") {
+        updatedJobs = updatedJobs.filter(
+          (job) =>
+            job.department.toLowerCase() === selectedDepartment.toLowerCase()
+        );
+      }
+
+      // Apply Pay Rate Filter
+      if (selectedPayRate !== "all") {
+        const [type, rateStr] = selectedPayRate.split("$");
+        const rate = parseInt(rateStr.replace("/hr", ""));
+        if (type === "above") {
+          updatedJobs = updatedJobs.filter((job) => {
+            const jobRate = parseInt(job.payRate.replace("$", "").replace("/hr", ""));
+            return jobRate >= rate;
+          });
+        } else if (type === "below") {
+          updatedJobs = updatedJobs.filter((job) => {
+            const jobRate = parseInt(job.payRate.replace("$", "").replace("/hr", ""));
+            return jobRate <= rate;
+          });
+        }
+      }
+
+      setFilteredJobs(updatedJobs);
+
+      // Update total pages based on filtered jobs
+      setTotalPages(Math.ceil(updatedJobs.length / jobsPerPage));
+    };
+
+    applyFilters();
+  }, [debouncedSearchQuery, selectedShift, selectedDepartment, selectedPayRate, jobListings]);
+
+  // Paginate filtered jobs
+  const paginatedJobs = filteredJobs.slice(
+    (currentPage - 1) * jobsPerPage,
+    currentPage * jobsPerPage
+  );
 
   // Navigate to job details page
   const onViewDetails = (jobId: number) => {
@@ -172,7 +241,8 @@ const JobSearchPageComponent: React.FC = () => {
                     </div>
 
                     {/* Filters Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                      {/* Shift Type Filter */}
                       <div>
                         <Label
                           htmlFor="shiftType"
@@ -189,14 +259,14 @@ const JobSearchPageComponent: React.FC = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Shifts</SelectItem>
-                            <SelectItem value="Day Shift">Day Shift</SelectItem>
-                            <SelectItem value="Night Shift">
-                              Night Shift
-                            </SelectItem>
+                            <SelectItem value="Day">Day Shift</SelectItem>
+                            <SelectItem value="Night">Night Shift</SelectItem>
+                            <SelectItem value="Swing">Swing Shift</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
 
+                      {/* Department Filter */}
                       <div>
                         <Label
                           htmlFor="department"
@@ -215,8 +285,8 @@ const JobSearchPageComponent: React.FC = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Departments</SelectItem>
-                            <SelectItem value="Intensive Care Unit">
-                              Intensive Care Unit
+                            <SelectItem value="Intensive Care">
+                              Intensive Care
                             </SelectItem>
                             <SelectItem value="Emergency Room">
                               Emergency Room
@@ -224,7 +294,7 @@ const JobSearchPageComponent: React.FC = () => {
                             <SelectItem value="Pediatrics">
                               Pediatrics
                             </SelectItem>
-                            <SelectItem value="Surgical">Surgical</SelectItem>
+                            <SelectItem value="Surgery">Surgery</SelectItem>
                             <SelectItem value="Oncology">Oncology</SelectItem>
                             <SelectItem value="Geriatrics">
                               Geriatrics
@@ -233,12 +303,39 @@ const JobSearchPageComponent: React.FC = () => {
                         </Select>
                       </div>
 
+                      {/* Pay Rate Filter */}
+                      <div>
+                        <Label
+                          htmlFor="payRate"
+                          className="text-gray-700 font-semibold"
+                        >
+                          Pay Rate
+                        </Label>
+                        <Select
+                          onValueChange={(value) =>
+                            setSelectedPayRate(value)
+                          }
+                          defaultValue="all"
+                        >
+                          <SelectTrigger className="mt-2">
+                            <SelectValue placeholder="All Pay Rates" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Pay Rates</SelectItem>
+                            <SelectItem value="above$30/hr">Above $30/hr</SelectItem>
+                            <SelectItem value="below$30/hr">Below $30/hr</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Reset Button */}
                       <div className="flex justify-end">
                         <Button
                           onClick={() => {
                             setSearchQuery("");
                             setSelectedShift("all");
                             setSelectedDepartment("all");
+                            setSelectedPayRate("all");
                           }}
                           variant="outline"
                           className="w-full md:w-auto"
@@ -257,7 +354,7 @@ const JobSearchPageComponent: React.FC = () => {
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
             {loading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-                {Array.from({ length: 9 }, (_, index) => (
+                {Array.from({ length: jobsPerPage }, (_, index) => (
                   <Card
                     key={index}
                     className="flex flex-col max-h-80 shadow-sm"
@@ -272,9 +369,9 @@ const JobSearchPageComponent: React.FC = () => {
                   </Card>
                 ))}
               </div>
-            ) : jobListings && jobListings.length > 0 ? (
+            ) : paginatedJobs && paginatedJobs.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-                {jobListings.map((job) => (
+                {paginatedJobs.map((job) => (
                   <JobCard
                     key={job.id}
                     job={job}

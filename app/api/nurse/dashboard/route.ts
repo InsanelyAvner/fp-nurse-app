@@ -1,11 +1,9 @@
 // app/api/nurse/dashboard/route.ts
 
-import { PrismaClient } from '@prisma/client';
+import prisma from '@/lib/db';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
-
-const prisma = new PrismaClient();
 
 // Helper function to verify JWT
 async function verifyJWT(token: string, secret: string) {

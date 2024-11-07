@@ -4,15 +4,26 @@ import { createContext, useState, useEffect, ReactNode } from 'react';
 
 interface User {
     id: number;
-    name: string;
+    firstName: string;
+    lastName: string;
+    dob?: string;
+    gender: string;
+    contactNumber: string;
     email: string;
+    address: string;
     role: string;
-    bio: string;
-    experience: number;
+    bio?: string;
+    licenseNumber?: string;
+    licenseExpiration?: string;
+    yearsOfExperience?: number;
+    education?: string;
     certifications: string[];
+    specializations: string[];
+    languages: string[];
+    shiftPreferences: string[];
     skills: string[];
-  }
-  
+    profilePictureUrl?: string;
+}
 
 interface UserContextType {
   user: User | null;

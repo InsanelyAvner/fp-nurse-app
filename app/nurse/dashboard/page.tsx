@@ -150,12 +150,12 @@ const NurseDashboardComponent: React.FC = () => {
             ) : (
               <h1 className="text-2xl font-semibold text-gray-900 mb-6">
                 Welcome back,{" "}
-                <span className="text-[#9d2235]">{user.name}</span>!
+                <span className="text-[#9d2235]">{user.firstName}</span>!
               </h1>
             )}
 
             {/* Enhanced Profile Completion Prompt */}
-            {profileCompletion < 100 && (
+            {!loading && profileCompletion < 100 && (
               <div className="mb-6">
                 <Card className="bg-[#9d2235] text-white">
                   <CardContent className="flex flex-col md:flex-row md:items-center p-6">
@@ -170,16 +170,10 @@ const NurseDashboardComponent: React.FC = () => {
                       <h2 className="text-lg font-semibold mb-2">
                         Complete Your Profile
                       </h2>
-                      <p className="text-sm mb-4">
-                        Your profile is <strong>{profileCompletion}%</strong>{" "}
-                        complete. Completing your profile helps us match you
+                      <p className="text-sm">
+                        Completing your profile helps us match you
                         with the best job opportunities!
                       </p>
-                      <Progress
-                        value={profileCompletion}
-                        accentColor="#fff"
-                        trackColor="rgba(255,255,255,0.3)"
-                      />
                     </div>
 
                     {/* Button */}

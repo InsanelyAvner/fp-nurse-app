@@ -1,45 +1,55 @@
-import { NextResponse } from 'next/server';
+// app/api/nurse/jobs/route.ts
 
-interface Job {
-    id: number;
-    title: string;
-    facility: string;
-    date: string;
-    time: string;
-    payRate: string;
-    urgent: boolean;
-    requiredSkills: string[];
-    shiftType: string;
-    department: string;
-}
+import prisma from '@/lib/db';
+import { getUserFromToken } from '@/lib/utils/auth'; // Utility function to extract user from JWT
+import { NextRequest, NextResponse } from 'next/server';
 
-const jobListings: Job[] = [
-    {
-        id: 1,
-        title: 'Registered Nurse - ICU',
-        facility: 'Farrer Park Hospital',
-        date: '2023-10-15',
-        time: '07:00 - 19:00',
-        payRate: '$50/hour',
-        urgent: true,
-        requiredSkills: ['ICU', 'Critical Care'],
-        shiftType: 'Day Shift',
-        department: 'Intensive Care Unit',
-    },
-    {
-        id: 2,
-        title: 'Registered Nurse - ER',
-        facility: 'Farrer Park Hospital',
-        date: '2023-10-16',
-        time: '19:00 - 07:00',
-        payRate: '$45/hour',
-        urgent: false,
-        requiredSkills: ['BLS', 'ACLS'],
-        shiftType: 'Night Shift',
-        department: 'Emergency Room',
-    },
-];
+export async function GET(req: NextRequest) {
+  try {
+    const user = await getUserFromToken(req);
 
-export async function GET() {
-    return NextResponse.json(jobListings, { status: 200 });
+    if (!user) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const jobs = await prisma.job.findMany({
+      where: {
+        status: 'ACTIVE',
+        requiredSkills: {
+          some: {
+            id: {
+              in: user.skills.map((skill) => skill.id),
+            },
+          },
+        },
+      },
+      include: {
+        requiredSkills: true,
+      },
+    });
+
+    const jobMatches = jobs.map((job) => ({
+      id: job.id,
+      title: job.title,
+      description: job.description,
+      facility: job.facility,
+      department: job.department,
+      shiftType: job.shiftType,
+      date: job.startDateTime.toISOString().split('T')[0],
+      time: `${job.startDateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${job.endDateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      payRate: job.payRate,
+      urgent: job.urgent,
+      status: job.status,
+      requiredSkills: job.requiredSkills.map((skill) => skill.name),
+      createdAt: job.createdAt.toISOString(),
+      updatedAt: job.updatedAt.toISOString(),
+    }));
+
+    return NextResponse.json(jobMatches, { status: 200 });
+  } catch (error) {
+    console.error('Error fetching jobs:', error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
+  }
 }

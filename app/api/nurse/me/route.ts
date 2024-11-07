@@ -136,7 +136,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   console.log('POST request received');
   try {
     const user = await getUserFromToken(req);
-    console.log('Authenticated user:', user);
 
     if (!user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
@@ -176,15 +175,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         shiftPreferences: parsedShiftPreferences,
         skills: {
           set: [],
-          connect: parsedSkills.map((skillName: string) => ({ name: skillName })),
+          connect: parsedSkills
+            .filter((skillName: string) => skillName !== null)
+            .map((skillName: string) => ({ name: skillName })),
         },
       },
       include: {
         documents: true,
       },
     });
-
-    console.log('Updated user:', updatedUser);
 
     // Handle experiences array
     const experiences: Array<{
@@ -243,8 +242,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         })
       )
     );
-
-    console.log('Experiences updated:', experiences);
 
     return NextResponse.json({ message: 'Profile updated successfully' }, { status: 200 });
   } catch (error) {

@@ -80,6 +80,7 @@ const NurseProfilePageComponent: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true); // Added loading state
   const [initialData, setInitialData] = useState<FormData | null>(null);
 
+
   const {
     register,
     handleSubmit,
@@ -304,6 +305,7 @@ const NurseProfilePageComponent: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gray-50">
+      <div ref={topRef}></div>
       {/* Sidebar */}
       <Sidebar
         isSidebarOpen={isSidebarOpen}
@@ -1215,9 +1217,9 @@ const NurseProfilePageComponent: React.FC = () => {
                         id="resume"
                         type="file"
                         accept=".pdf,.doc,.docx"
-                        {...register("resume", {
-                          required: "Resume is required",
-                        })}
+                        // {...register("resume", {
+                        //   required: "Resume is required",
+                        // })}
                         className="mt-1"
                       />
                       {errors.resume && (
@@ -1234,9 +1236,9 @@ const NurseProfilePageComponent: React.FC = () => {
                         id="license"
                         type="file"
                         accept=".pdf,.jpg,.png"
-                        {...register("license", {
-                          required: "License copy is required",
-                        })}
+                        // {...register("license", {
+                        //   required: "License copy is required",
+                        // })}
                         className="mt-1"
                       />
                       {errors.license && (

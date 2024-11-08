@@ -80,7 +80,6 @@ const NurseProfilePageComponent: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true); // Added loading state
   const [initialData, setInitialData] = useState<FormData | null>(null);
 
-
   const {
     register,
     handleSubmit,
@@ -180,11 +179,10 @@ const NurseProfilePageComponent: React.FC = () => {
             },
           ],
     };
-  
+
     // Reset the form with the prepared values
     reset(formValues);
   };
-  
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
@@ -863,11 +861,21 @@ const NurseProfilePageComponent: React.FC = () => {
                         render={({ field }) => (
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
                             {[
-                              "ACLS",
-                              "BLS",
-                              "PALS",
-                              "Critical Care",
+                              "ICU Experience",
+                              "Pediatric Care",
+                              "Emergency Response",
+                              "Phlebotomy",
+                              "Medication Administration",
+                              "Patient Assessment",
                               "Wound Care",
+                              "IV Therapy",
+                              "Electronic Medical Records (EMR)",
+                              "Geriatric Care",
+                              "Neonatal Care",
+                              "Surgical Assistance",
+                              "Cardiac Care",
+                              "Oncology Nursing",
+                              "Mental Health Nursing",
                             ].map((skill) => (
                               <div
                                 key={skill}

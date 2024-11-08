@@ -75,7 +75,7 @@ const JobSearchPageComponent: React.FC = () => {
       setLoading(true);
 
       try {
-        const response = await fetch(`/api/nurse/jobs`, {
+        const response = await fetch(`/api/jobs`, {
           method: 'GET',
           credentials: 'include', // Ensure cookies are sent
         });

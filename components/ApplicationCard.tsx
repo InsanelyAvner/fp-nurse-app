@@ -29,6 +29,36 @@ interface JobCardProps {
   onViewDetails: (jobId: number) => void;
 }
 
+function convertTo24HourRange(timeRange:any) {
+    // Split the input range by " - "
+    const [startTime, endTime] = timeRange.split(" - ");
+
+    // Helper function to convert 12-hour format to 24-hour format
+    function convertTo24Hour(time:any) {
+        const [timePart, meridiem] = time.split(" ");
+        let [hours, minutes] = timePart.split(":").map(Number);
+
+        // Convert hours based on AM/PM
+        if (meridiem === "PM" && hours !== 12) {
+            hours += 12;
+        } else if (meridiem === "AM" && hours === 12) {
+            hours = 0;
+        }
+
+        // Format hours and minutes as two digits
+        const formattedHours = String(hours).padStart(2, "0");
+        const formattedMinutes = String(minutes).padStart(2, "0");
+
+        return `${formattedHours}:${formattedMinutes}`;
+    }
+
+    // Convert start and end times
+    const start24Hour = convertTo24Hour(startTime);
+    const end24Hour = convertTo24Hour(endTime);
+
+    return `${start24Hour} - ${end24Hour}`;
+}
+
 const ApplicationCard: React.FC<JobCardProps> = ({ job, onViewDetails }) => {
   const getStatusStyles = (status: string) => {
     const styles = {
@@ -85,12 +115,12 @@ const ApplicationCard: React.FC<JobCardProps> = ({ job, onViewDetails }) => {
             <div className="flex items-center text-gray-600">
               <CalendarIcon className="h-4 w-4 text-[#9d2235] mr-2" />
               <span className="text-sm">
-                {format(new Date(job.date), "MMM d, yyyy")}
+                {format(new Date(job.date), "d MMMM")}
               </span>
             </div>
             <div className="flex items-center text-gray-600">
               <Clock className="h-4 w-4 text-[#9d2235] mr-2" />
-              <span className="text-sm">{job.time}</span>
+              <span className="text-sm">{convertTo24HourRange(job.time)}</span>
             </div>
           </div>
 

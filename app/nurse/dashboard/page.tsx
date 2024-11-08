@@ -26,6 +26,8 @@ interface Job {
   urgent: boolean;
   requiredSkills: string[];
   matchingScore: number;
+  shiftType: string;
+  department: string;
 }
 
 interface Notification {

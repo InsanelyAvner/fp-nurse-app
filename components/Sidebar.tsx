@@ -35,9 +35,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isSidebarOpen, toggleSidebar, role })
 
   const nurseNavItems = [
     { label: 'Dashboard', icon: <Home size={20} />, href: '/nurse/dashboard' },
-    { label: 'Job Matches', icon: <Briefcase size={20} />, href: '#' },
+    // { label: 'Job Matches', icon: <Briefcase size={20} />, href: '#' },
     { label: 'Job Search', icon: <Search size={20} />, href: '/nurse/jobs/search' },
-    { label: 'My Applications', icon: <ClipboardList size={20} />, href: '#' },
+    { label: 'My Applications', icon: <ClipboardList size={20} />, href: '/nurse/applications' },
     // { label: 'Schedule', icon: <Calendar size={20} />, href: '/schedule' },
     // { label: 'Messages', icon: <MessageSquare size={20} />, href: '/messages' },
     { label: 'Profile', icon: <User size={20} />, href: '/nurse/profile' },

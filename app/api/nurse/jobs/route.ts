@@ -11,17 +11,19 @@ export async function GET(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
+    console.log(user)
+    console.log('User Skills:', user.skills);
 
     const jobs = await prisma.job.findMany({
       where: {
         status: 'ACTIVE',
-        requiredSkills: {
-          some: {
-            id: {
-              in: user.skills.map((skill) => skill.id),
-            },
-          },
-        },
+        // requiredSkills: {
+        //   some: {
+        //     id: {
+        //       in: user.skills.map((skill) => skill.id),
+        //     },
+        //   },
+        // },
       },
       include: {
         requiredSkills: true,
@@ -44,6 +46,8 @@ export async function GET(req: NextRequest) {
       createdAt: job.createdAt.toISOString(),
       updatedAt: job.updatedAt.toISOString(),
     }));
+
+    console.log(jobMatches)
 
     return NextResponse.json(jobMatches, { status: 200 });
   } catch (error) {

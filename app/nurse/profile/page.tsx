@@ -157,7 +157,7 @@ const NurseProfilePageComponent: React.FC = () => {
       yearsOfExperience: data.yearsOfExperience || 0,
       education: data.education || "",
       specializations: data.specializations || [],
-      skills: data.skills.map((skill: any) => skill.name) || [],
+      skills: data.skills || [], // Corrected line
       languages: data.languages || [],
       shiftPreferences: data.shiftPreferences || [],
       experiences: data.experiences
@@ -180,10 +180,11 @@ const NurseProfilePageComponent: React.FC = () => {
             },
           ],
     };
-
+  
     // Reset the form with the prepared values
     reset(formValues);
   };
+  
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
@@ -305,7 +306,6 @@ const NurseProfilePageComponent: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <div ref={topRef}></div>
       {/* Sidebar */}
       <Sidebar
         isSidebarOpen={isSidebarOpen}

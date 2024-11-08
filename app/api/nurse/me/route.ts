@@ -5,8 +5,7 @@ import { PrismaClient, DocumentType, Role } from '@prisma/client';
 import { getUserFromToken } from '@/lib/utils/auth';
 import fs from 'fs/promises';
 import path from 'path';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/db';
 
 // Enable body parsing in Next.js
 export const config = {
@@ -133,26 +132,43 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  console.log('POST request received');
   try {
     const user = await getUserFromToken(req);
 
-    if (!user) {
+    if (!user || (user.role !== Role.USER && user.role !== Role.ADMIN)) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    if (user.role !== Role.USER && user.role !== Role.ADMIN) {
-      return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-    }
-
-    // Retrieve form data from the request
     const formData = await req.formData();
     const fields = Object.fromEntries(formData.entries());
 
-    const parsedSpecializations = JSON.parse(fields.specializations as string);
-    const parsedSkills = JSON.parse(fields.skills as string);
-    const parsedLanguages = JSON.parse(fields.languages as string);
-    const parsedShiftPreferences = JSON.parse(fields.shiftPreferences as string);
+    // Parse JSON fields
+    const parsedSpecializations = fields.specializations
+      ? JSON.parse(fields.specializations as string)
+      : [];
+    const parsedSkills = fields.skills
+      ? JSON.parse(fields.skills as string).filter((e: string) => e)
+      : [];
+    const parsedLanguages = fields.languages
+      ? JSON.parse(fields.languages as string)
+      : [];
+    const parsedShiftPreferences = fields.shiftPreferences
+      ? JSON.parse(fields.shiftPreferences as string)
+      : [];
+    const parsedCertifications = fields.certifications
+      ? JSON.parse(fields.certifications as string)
+      : [];
+
+    // Ensure all skills exist in the database
+    const skillsToConnect = await Promise.all(
+      parsedSkills.map(async (skillName: string) => {
+        return await prisma.skill.upsert({
+          where: { name: skillName },
+          update: {},
+          create: { name: skillName },
+        });
+      })
+    );
 
     // Update user main fields
     const updatedUser = await prisma.user.update({
@@ -168,20 +184,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         licenseExpiration: fields.licenseExpiration
           ? new Date(fields.licenseExpiration as string)
           : null,
-        yearsOfExperience: parseInt(fields.yearsOfExperience as string, 10) || null,
+        yearsOfExperience:
+          parseInt(fields.yearsOfExperience as string, 10) || null,
         education: fields.education as string,
+        bio: fields.bio as string,
+        certifications: parsedCertifications,
         specializations: parsedSpecializations,
         languages: parsedLanguages,
         shiftPreferences: parsedShiftPreferences,
         skills: {
-          set: [],
-          connect: parsedSkills
-            .filter((skillName: string) => skillName !== null)
-            .map((skillName: string) => ({ name: skillName })),
+          set: skillsToConnect.map((skill) => ({ id: skill.id })),
         },
       },
       include: {
         documents: true,
+        skills: true,
       },
     });
 
@@ -196,7 +213,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }> = [];
 
     Object.keys(fields).forEach((key) => {
-      const match = key.match(/^experiences\[(\d+)]\[(\w+)]$/);
+      const match = key.match(/^experiences\[(\d+)\]\[(\w+)\]$/);
       if (match) {
         const index = parseInt(match[1], 10);
         const field = match[2];
@@ -211,18 +228,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             responsibilities: '',
           };
         }
-        
-        // Map each field to the experience object
-        if (field === 'facilityName') experiences[index].facilityName = fields[key] as string;
-        if (field === 'position') experiences[index].position = fields[key] as string;
-        if (field === 'department') experiences[index].department = fields[key] as string;
-        if (field === 'startDate') experiences[index].startDate = new Date(fields[key] as string);
-        if (field === 'endDate') experiences[index].endDate = new Date(fields[key] as string);
-        if (field === 'responsibilities') experiences[index].responsibilities = fields[key] as string;
+
+        if (field === 'facilityName')
+          experiences[index].facilityName = fields[key] as string;
+        if (field === 'position')
+          experiences[index].position = fields[key] as string;
+        if (field === 'department')
+          experiences[index].department = fields[key] as string;
+        if (field === 'startDate') {
+          const date = fields[key] as string;
+          experiences[index].startDate = date ? new Date(date) : null;
+        }
+        if (field === 'endDate') {
+          const date = fields[key] as string;
+          experiences[index].endDate = date ? new Date(date) : null;
+        }
+        if (field === 'responsibilities')
+          experiences[index].responsibilities = fields[key] as string;
       }
     });
 
-    // Update or create experiences in the database
+    // Update experiences
     await prisma.experience.deleteMany({
       where: { userId: user.id },
     });
@@ -243,7 +269,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       )
     );
 
-    return NextResponse.json({ message: 'Profile updated successfully' }, { status: 200 });
+    return NextResponse.json(
+      { message: 'Profile updated successfully' },
+      { status: 200 }
+    );
   } catch (error) {
     console.error('Error updating user profile:', error);
     return NextResponse.json(

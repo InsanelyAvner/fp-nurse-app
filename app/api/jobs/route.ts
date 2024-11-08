@@ -15,13 +15,13 @@ export async function GET(req: NextRequest) {
     const jobs = await prisma.job.findMany({
       where: {
         status: 'ACTIVE',
-        requiredSkills: {
-          some: {
-            id: {
-              in: user.skills.map((skill) => skill.id),
-            },
-          },
-        },
+        // requiredSkills: {
+        //   some: {
+        //     id: {
+        //       in: user.skills.map((skill) => skill.id),
+        //     },
+        //   },
+        // },
       },
       include: {
         requiredSkills: true,

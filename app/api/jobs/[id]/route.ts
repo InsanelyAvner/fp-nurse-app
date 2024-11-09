@@ -225,3 +225,43 @@ export async function PUT(
     await prisma.$disconnect();
   }
 }
+
+// DELETE function
+export async function DELETE(
+  req: NextRequest,
+  context: { params: { id: string } }
+): Promise<NextResponse> {
+  const { id } = context.params;
+  const jobId = parseInt(id, 10);
+
+  if (isNaN(jobId)) {
+    return NextResponse.json({ message: 'Invalid job ID' }, { status: 400 });
+  }
+
+  try {
+    const user = await getUserFromToken(req);
+
+    if (!user) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (user.role !== 'ADMIN') {
+      return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+    }
+
+    const job = await prisma.job.findUnique({ where: { id: jobId } });
+
+    if (!job) {
+      return NextResponse.json({ message: 'Job not found' }, { status: 404 });
+    }
+
+    await prisma.job.delete({ where: { id: jobId } });
+
+    return NextResponse.json({ message: 'Job deleted successfully' }, { status: 200 });
+  } catch (error: any) {
+    console.error('Error deleting job:', error.message || error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  } finally {
+    await prisma.$disconnect();
+  }
+}

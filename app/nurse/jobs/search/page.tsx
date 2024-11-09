@@ -67,7 +67,12 @@ const JobSearchPageComponent: React.FC = () => {
   // Reset current page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearchQuery, selectedShift, selectedDepartment, selectedPayRate]);
+  }, [
+    debouncedSearchQuery,
+    selectedShift,
+    selectedDepartment,
+    selectedPayRate,
+  ]);
 
   // Fetch jobs dynamically when component mounts
   useEffect(() => {
@@ -75,9 +80,11 @@ const JobSearchPageComponent: React.FC = () => {
       setLoading(true);
 
       try {
-        const response = await fetch(`/api/jobs`, {
-          method: 'GET',
-          credentials: 'include', // Ensure cookies are sent
+        const hideAppliedJobs = false; // or false, depending on your requirement
+
+        const response = await fetch(`/api/jobs?hideAppliedJobs=${hideAppliedJobs}`, {
+          method: "GET",
+          credentials: "include", // Ensure cookies are sent
         });
         if (response.ok) {
           const data: Job[] = await response.json();
@@ -136,12 +143,16 @@ const JobSearchPageComponent: React.FC = () => {
         const rate = parseInt(rateStr.replace("/hr", ""));
         if (type === "above") {
           updatedJobs = updatedJobs.filter((job) => {
-            const jobRate = parseInt(job.payRate.replace("$", "").replace("/hr", ""));
+            const jobRate = parseInt(
+              job.payRate.replace("$", "").replace("/hr", "")
+            );
             return jobRate >= rate;
           });
         } else if (type === "below") {
           updatedJobs = updatedJobs.filter((job) => {
-            const jobRate = parseInt(job.payRate.replace("$", "").replace("/hr", ""));
+            const jobRate = parseInt(
+              job.payRate.replace("$", "").replace("/hr", "")
+            );
             return jobRate <= rate;
           });
         }
@@ -154,7 +165,13 @@ const JobSearchPageComponent: React.FC = () => {
     };
 
     applyFilters();
-  }, [debouncedSearchQuery, selectedShift, selectedDepartment, selectedPayRate, jobListings]);
+  }, [
+    debouncedSearchQuery,
+    selectedShift,
+    selectedDepartment,
+    selectedPayRate,
+    jobListings,
+  ]);
 
   // Paginate filtered jobs
   const paginatedJobs = filteredJobs.slice(
@@ -312,9 +329,7 @@ const JobSearchPageComponent: React.FC = () => {
                           Pay Rate
                         </Label>
                         <Select
-                          onValueChange={(value) =>
-                            setSelectedPayRate(value)
-                          }
+                          onValueChange={(value) => setSelectedPayRate(value)}
                           defaultValue="all"
                         >
                           <SelectTrigger className="mt-2">
@@ -322,8 +337,12 @@ const JobSearchPageComponent: React.FC = () => {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Pay Rates</SelectItem>
-                            <SelectItem value="above$30/hr">Above $30/hr</SelectItem>
-                            <SelectItem value="below$30/hr">Below $30/hr</SelectItem>
+                            <SelectItem value="above$30/hr">
+                              Above $30/hr
+                            </SelectItem>
+                            <SelectItem value="below$30/hr">
+                              Below $30/hr
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

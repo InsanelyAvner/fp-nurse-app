@@ -1,7 +1,5 @@
-// app/api/nurse/jobs/route.ts
-
 import prisma from '@/lib/db';
-import { getUserFromToken } from '@/lib/utils/auth'; // Utility function to extract user from JWT
+import { getUserFromToken } from '@/lib/utils/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
@@ -11,19 +9,31 @@ export async function GET(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
-    console.log(user)
-    console.log('User Skills:', user.skills);
+
+    const { searchParams } = new URL(req.url);
+    const hideApplied = searchParams.get('hideApplied') === 'true';
+
+    let appliedJobIds: number[] = [];
+    if (hideApplied) {
+      const applications = await prisma.application.findMany({
+        where: {
+          userId: user.id,
+        },
+        select: {
+          jobId: true,
+        },
+      });
+      appliedJobIds = applications.map((app) => app.jobId);
+    }
 
     const jobs = await prisma.job.findMany({
       where: {
         status: 'ACTIVE',
-        // requiredSkills: {
-        //   some: {
-        //     id: {
-        //       in: user.skills.map((skill) => skill.id),
-        //     },
-        //   },
-        // },
+        ...(hideApplied && {
+          id: {
+            notIn: appliedJobIds,
+          },
+        }),
       },
       include: {
         requiredSkills: true,
@@ -46,8 +56,6 @@ export async function GET(req: NextRequest) {
       createdAt: job.createdAt.toISOString(),
       updatedAt: job.updatedAt.toISOString(),
     }));
-
-    console.log(jobMatches)
 
     return NextResponse.json(jobMatches, { status: 200 });
   } catch (error) {

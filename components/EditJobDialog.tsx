@@ -24,10 +24,15 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { CalendarIcon, X } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { TimePicker } from "@/components/ui/time-picker";
 
 interface Skill {
   id: number;
@@ -43,10 +48,10 @@ interface Job {
   status: "ACTIVE" | "CLOSED" | "DRAFT";
   applicants: number;
   date: string; // ISO date string (e.g., "2025-09-16")
-  time: string;
+  time: string; // Combined time string (e.g., "6:45 PM - 8:00 PM")
   payRate: string;
   urgent: boolean;
-  requiredSkills: string[]; // Changed to string[] to handle skill names
+  requiredSkills: string[]; // Skill names
   description: string;
 }
 
@@ -54,7 +59,11 @@ interface EditJobDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   job: Job | null;
-  onUpdate: (updatedJob: Job) => void;
+  onUpdate: (
+    updatedJob: Omit<Job, "status" | "applicants" | "requiredSkills"> & {
+      requiredSkills: string[];
+    }
+  ) => void;
 }
 
 const EditJobDialog: React.FC<EditJobDialogProps> = ({
@@ -68,92 +77,88 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
   const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
   const [allSkills, setAllSkills] = useState<Skill[]>([]);
 
+  // State variables for TimePicker
+  const [startTime, setStartTime] = useState<Date | undefined>(undefined);
+  const [endTime, setEndTime] = useState<Date | undefined>(undefined);
+
   // Fetch all skills when the dialog opens
   useEffect(() => {
-    if (open) {
-      const fetchSkills = async () => {
-        try {
-          const response = await fetch("/api/skills", {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          });
+    const fetchSkills = async () => {
+      try {
+        const response = await fetch("/api/skills", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
 
-          if (!response.ok) {
-            throw new Error(`Failed to fetch skills: ${response.statusText}`);
-          }
-
-          const responseData = await response.json();
-
-          // Ensure responseData is an array
-          const data: Skill[] = Array.isArray(responseData)
-            ? responseData
-            : Array.isArray(responseData.skills)
-            ? responseData.skills
-            : [];
-
-          if (!Array.isArray(data)) {
-            throw new Error("Invalid data format: Expected an array of skills.");
-          }
-
-          console.log("Fetched Skills:", data); // Debugging Log
-          setAllSkills(data);
-
-          if (job) {
-            console.log("Job Data:", job); // Debugging Log
-
-            // Map requiredSkills names to Skill objects
-            const jobSkills = data.filter((skill) =>
-              job.requiredSkills.includes(skill.name)
-            );
-
-            console.log("Job Skills after Mapping:", jobSkills); // Debugging Log
-
-            setSelectedSkills(jobSkills);
-
-            // Optionally, handle skills in job.requiredSkills that don't exist in fetched skills
-            const missingSkills = job.requiredSkills.filter(
-              (skillName) => !data.some((skill) => skill.name === skillName)
-            );
-
-            if (missingSkills.length > 0) {
-              console.warn(
-                `The following skills are missing from the skills list: ${missingSkills.join(
-                  ", "
-                )}`
-              );
-              alert(
-                `The following skills are missing and cannot be pre-filled: ${missingSkills.join(
-                  ", "
-                )}. Please add them manually.`
-              );
-            }
-          } else {
-            setSelectedSkills([]);
-          }
-        } catch (error) {
-          console.error(error);
-          alert("An error occurred while fetching skills. Please try again.");
+        if (!response.ok) {
+          throw new Error(`Failed to fetch skills: ${response.statusText}`);
         }
-      };
 
+        const responseData = await response.json();
+
+        // Ensure responseData is an array
+        const data: Skill[] = Array.isArray(responseData)
+          ? responseData
+          : Array.isArray(responseData.skills)
+          ? responseData.skills
+          : [];
+
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid data format: Expected an array of skills.");
+        }
+
+        console.log("Fetched Skills:", data); // Debugging Log
+        setAllSkills(data);
+
+        if (job) {
+          console.log("Job Data:", job); // Debugging Log
+
+          // Map requiredSkills names to Skill objects
+          const jobSkills = data.filter((skill) =>
+            job.requiredSkills.includes(skill.name)
+          );
+
+          console.log("Job Skills after Mapping:", jobSkills); // Debugging Log
+
+          setSelectedSkills(jobSkills);
+
+          // Parse the existing time string into startTime and endTime
+          if (job.time) {
+            const [startStr, endStr] = job.time.split(" - ");
+            const parsedStart = parse(startStr, "h:mm a", new Date());
+            const parsedEnd = parse(endStr, "h:mm a", new Date());
+
+            if (!isNaN(parsedStart.getTime()) && !isNaN(parsedEnd.getTime())) {
+              setStartTime(parsedStart);
+              setEndTime(parsedEnd);
+            } else {
+              console.warn("Invalid time format in job data.");
+            }
+          }
+        } else {
+          setSelectedSkills([]);
+        }
+      } catch (error) {
+        console.error(error);
+        alert("An error occurred while fetching skills. Please try again.");
+      }
+    };
+
+    if (open) {
       fetchSkills();
-    } else {
-      // Reset state when dialog is closed
-      setEditingJob(null);
-      setSkillInput("");
-      setSelectedSkills([]);
     }
   }, [open, job]);
 
   // Initialize editingJob when job changes
   useEffect(() => {
-    if (job) {
+    if (open && job) {
       setEditingJob(job);
-      console.log("Set Editing Job:", job); // Debugging Log
+    } else {
+      setEditingJob(null);
     }
-  }, [job]);
+  }, [open, job]);
 
   // Compute filteredSkills based on skillInput and selectedSkills
   const filteredSkills = useMemo(() => {
@@ -220,7 +225,8 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
       !editingJob.department ||
       !editingJob.shiftType ||
       !editingJob.date ||
-      !editingJob.time ||
+      !startTime ||
+      !endTime ||
       !editingJob.payRate ||
       selectedSkills.length === 0 ||
       !editingJob.description
@@ -229,9 +235,25 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
       return;
     }
 
-    const updatedJob: Job = {
+    // Validate that start time is before end time
+    if (startTime >= endTime) {
+      alert("Start time must be before end time.");
+      return;
+    }
+
+    // Format the times to "HH:MM AM/PM"
+    const formatTime = (date: Date) => {
+      return format(date, "hh:mm aa");
+    };
+
+    const timeString = `${formatTime(startTime)} - ${formatTime(endTime)}`;
+
+    const updatedJob: Omit<Job, "status" | "applicants" | "requiredSkills"> & {
+      requiredSkills: string[];
+    } = {
       ...editingJob,
-      requiredSkills: selectedSkills.map((skill) => skill.name), // Send skill names
+      time: timeString, // Update the combined time string
+      requiredSkills: selectedSkills.map((skill) => skill.name),
     };
 
     console.log("Updated Job Data:", updatedJob); // Debugging Log
@@ -241,6 +263,8 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
     setEditingJob(null);
     setSelectedSkills([]);
     setSkillInput("");
+    setStartTime(undefined);
+    setEndTime(undefined);
     alert("Job updated successfully!");
   };
 
@@ -263,7 +287,10 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
           >
             {/* Job Title */}
             <div>
-              <Label htmlFor="edit-title" className="block font-medium text-gray-700">
+              <Label
+                htmlFor="edit-title"
+                className="block font-medium text-gray-700"
+              >
                 Job Title
               </Label>
               <Input
@@ -280,7 +307,10 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
 
             {/* Facility */}
             <div>
-              <Label htmlFor="edit-facility" className="block font-medium text-gray-700">
+              <Label
+                htmlFor="edit-facility"
+                className="block font-medium text-gray-700"
+              >
                 Facility
               </Label>
               <Input
@@ -297,7 +327,10 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
 
             {/* Department */}
             <div>
-              <Label htmlFor="edit-department" className="block font-medium text-gray-700">
+              <Label
+                htmlFor="edit-department"
+                className="block font-medium text-gray-700"
+              >
                 Department
               </Label>
               <Select
@@ -326,7 +359,10 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
 
             {/* Shift Type */}
             <div>
-              <Label htmlFor="edit-shiftType" className="block font-medium text-gray-700">
+              <Label
+                htmlFor="edit-shiftType"
+                className="block font-medium text-gray-700"
+              >
                 Shift Type
               </Label>
               <Select
@@ -349,62 +385,93 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
               </Select>
             </div>
 
-            {/* Date and Time */}
+            <div className="flex-1">
+              <Label
+                htmlFor="edit-date"
+                className="block font-medium text-gray-700"
+              >
+                Date
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal mt-1",
+                      !editingJob.date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-5 w-5 text-gray-500" />
+                    {editingJob.date
+                      ? format(new Date(editingJob.date), "PPP")
+                      : "Select date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <input
+                    type="date"
+                    value={editingJob.date}
+                    onChange={(e) =>
+                      setEditingJob({ ...editingJob, date: e.target.value })
+                    }
+                    className="w-full p-2"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Date Picker */}
             <div className="flex flex-col sm:flex-row sm:space-x-6">
               {/* Date */}
-              <div className="flex-1">
-                <Label htmlFor="edit-date" className="block font-medium text-gray-700">
-                  Date
-                </Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal mt-1",
-                        !editingJob.date && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-5 w-5 text-gray-500" />
-                      {editingJob.date
-                        ? format(new Date(editingJob.date), "PPP")
-                        : "Select date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <input
-                      type="date"
-                      value={editingJob.date}
-                      onChange={(e) =>
-                        setEditingJob({ ...editingJob, date: e.target.value })
-                      }
-                      className="w-full p-2"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
 
-              {/* Time */}
+              {/* Time Pickers */}
               <div className="flex-1 mt-4 sm:mt-0">
-                <Label htmlFor="edit-time" className="block font-medium text-gray-700">
+                <Label
+                  htmlFor="edit-time"
+                  className="block font-medium text-gray-700"
+                >
                   Time
                 </Label>
-                <Input
-                  id="edit-time"
-                  value={editingJob.time}
-                  onChange={(e) =>
-                    setEditingJob({ ...editingJob, time: e.target.value })
-                  }
-                  placeholder="e.g., 6:45 PM - 8:00 PM"
-                  required
-                  className="mt-1"
-                />
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:space-x-4">
+                    {/* Start Time */}
+                    <div className="flex-1">
+                      <Label
+                        htmlFor="edit-startTime"
+                        className="block text-sm text-gray-600"
+                      >
+                        Start Time
+                      </Label>
+                      <TimePicker
+                        setDate={setStartTime}
+                        date={startTime}
+                      />
+                    </div>
+
+                    {/* End Time */}
+                    <div className="flex-1">
+                      <Label
+                        htmlFor="edit-endTime"
+                        className="block text-sm text-gray-600"
+                      >
+                        End Time
+                      </Label>
+                      <TimePicker
+                        setDate={setEndTime}
+                        date={endTime}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Pay Rate */}
             <div>
-              <Label htmlFor="edit-payRate" className="block font-medium text-gray-700">
+              <Label
+                htmlFor="edit-payRate"
+                className="block font-medium text-gray-700"
+              >
                 Pay Rate
               </Label>
               <Input
@@ -421,7 +488,10 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
 
             {/* Required Skills with Autocomplete and Custom Input */}
             <div>
-              <Label htmlFor="edit-requiredSkills" className="block font-medium text-gray-700">
+              <Label
+                htmlFor="edit-requiredSkills"
+                className="block font-medium text-gray-700"
+              >
                 Required Skills
               </Label>
               <div className="relative mt-1">
@@ -452,7 +522,8 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
                 {/* Add Button for Non-Existing Skills */}
                 {skillInput.trim() !== "" &&
                   !allSkills.some(
-                    (s) => s.name.toLowerCase() === skillInput.trim().toLowerCase()
+                    (s) =>
+                      s.name.toLowerCase() === skillInput.trim().toLowerCase()
                   ) && (
                     <button
                       type="button"
@@ -461,7 +532,9 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
                         if (skillName === "") return;
 
                         // Optionally, handle custom skill creation here
-                        alert(`Skill "${skillName}" not found. Please select from the list.`);
+                        alert(
+                          `Skill "${skillName}" not found. Please select from the list.`
+                        );
                         setSkillInput("");
                       }}
                       className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-[#9d2235] text-white px-2 py-1 rounded-md text-sm hover:bg-[#7a172f]"
@@ -494,7 +567,10 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
 
             {/* Job Description */}
             <div>
-              <Label htmlFor="edit-description" className="block font-medium text-gray-700">
+              <Label
+                htmlFor="edit-description"
+                className="block font-medium text-gray-700"
+              >
                 Job Description
               </Label>
               <Textarea

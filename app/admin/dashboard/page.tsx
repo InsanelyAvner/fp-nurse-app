@@ -18,6 +18,7 @@ import {
   Plus,
   Trash,
   Users2,
+  Loader2, // Import Loader2 for the spinner
 } from "lucide-react";
 import Link from "next/link";
 import CreateJobDialog from "@/components/CreateJobDialog";
@@ -49,8 +50,12 @@ interface Job {
   updatedAt: string;
 }
 
+import { useRouter } from "next/navigation";
+
 const JobManagementPageComponent: React.FC = () => {
-  const userRole: "ADMIN" | "USER" = "ADMIN"; // Ensure role matches schema
+  const userRole: "admin" | "nurse" = "admin"; // Ensure role matches schema
+  const router = useRouter();
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
@@ -61,6 +66,9 @@ const JobManagementPageComponent: React.FC = () => {
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState<boolean>(false);
   const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
+  
+  // New state for loading
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -144,6 +152,8 @@ const JobManagementPageComponent: React.FC = () => {
   const confirmDeleteJob = async () => {
     if (!jobToDelete) return;
 
+    setIsDeleting(true); // Start loading
+
     try {
       const response = await fetch(`/api/jobs/${jobToDelete.id}`, {
         method: "DELETE",
@@ -158,6 +168,8 @@ const JobManagementPageComponent: React.FC = () => {
       setJobToDelete(null);
     } catch (error) {
       console.error(error);
+    } finally {
+      setIsDeleting(false); // End loading
     }
   };
 
@@ -341,7 +353,7 @@ const JobManagementPageComponent: React.FC = () => {
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-6 rounded-lg">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-semibold text-red-600">
+            <DialogTitle className="text-2xl font-semibold">
               Confirm Deletion
             </DialogTitle>
             <DialogDescription className="mt-2 text-gray-600">
@@ -355,14 +367,19 @@ const JobManagementPageComponent: React.FC = () => {
               variant="outline"
               onClick={() => setIsDeleteDialogOpen(false)}
               className="px-4 py-2"
+              disabled={isDeleting} // Optionally disable cancel while deleting
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={confirmDeleteJob}
-              className="px-4 py-2"
+              className="px-4 py-2 flex items-center"
+              disabled={isDeleting} // Disable button while loading
             >
+              {isDeleting && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Delete
             </Button>
           </DialogFooter>

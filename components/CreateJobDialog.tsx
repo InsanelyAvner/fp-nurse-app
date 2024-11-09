@@ -22,12 +22,17 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { CalendarIcon, Plus, X } from "lucide-react";
+import { CalendarIcon, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { TimePicker } from "@/components/ui/time-picker";
 
 interface Skill {
   id: number;
@@ -39,10 +44,10 @@ interface Job {
   facility: string;
   department: string;
   shiftType: string;
-  date: Date;
-  time: string;
+  date: string;
+  time: string; // Combined time field
   payRate: string;
-  requiredSkills: number[];
+  requiredSkills: string[];
   description: string;
   urgent: boolean;
 }
@@ -50,7 +55,9 @@ interface Job {
 interface CreateJobDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate: (job: Job) => void;
+  onCreate: (
+    job: Omit<Job, "id" | "status" | "applicants" | "createdAt" | "updatedAt">
+  ) => void;
 }
 
 const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
@@ -58,12 +65,14 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
   onOpenChange,
   onCreate,
 }) => {
-  const [newJob, setNewJob] = useState<Omit<Job, "id" | "status" | "applicants">>({
+  const [newJob, setNewJob] = useState<
+    Omit<Job, "id" | "status" | "applicants">
+  >({
     title: "",
     facility: "",
     department: "",
     shiftType: "",
-    date: new Date(),
+    date: format(new Date(), "yyyy-MM-dd"),
     time: "",
     payRate: "",
     requiredSkills: [],
@@ -75,6 +84,10 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
   const [filteredSkills, setFilteredSkills] = useState<Skill[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
   const [allSkills, setAllSkills] = useState<Skill[]>([]);
+
+  // State variables for TimePicker
+  const [startTime, setStartTime] = useState<Date | undefined>(undefined);
+  const [endTime, setEndTime] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     const fetchSkills = async () => {
@@ -100,6 +113,16 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
 
     if (open) {
       fetchSkills();
+      // Initialize start and end times if not already set
+      if (!startTime) {
+        const now = new Date();
+        setStartTime(now);
+      }
+      if (!endTime) {
+        const later = new Date();
+        later.setHours(later.getHours() + 1);
+        setEndTime(later);
+      }
     }
   }, [open]);
 
@@ -110,7 +133,8 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
       !newJob.department ||
       !newJob.shiftType ||
       !newJob.date ||
-      !newJob.time ||
+      !startTime ||
+      !endTime ||
       !newJob.payRate ||
       selectedSkills.length === 0 ||
       !newJob.description
@@ -119,9 +143,23 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
       return;
     }
 
-    const jobData: Job = {
+    // Validate that start time is before end time
+    // if (startTime >= endTime) {
+    //   alert("Start time must be before end time.");
+    //   return;
+    // }
+
+    // Format the times to "HH:MM AM/PM"
+    const formatTime = (date: Date) => {
+      return format(date, "hh:mm aa");
+    };
+
+    const timeString = `${formatTime(startTime)} - ${formatTime(endTime)}`;
+
+    const jobData: Omit<Job, "id" | "status" | "applicants"> = {
       ...newJob,
-      requiredSkills: selectedSkills.map((skill) => skill.id),
+      time: timeString,
+      requiredSkills: selectedSkills.map((skill) => skill.name),
     };
 
     onCreate(jobData);
@@ -131,7 +169,7 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
       facility: "",
       department: "",
       shiftType: "",
-      date: new Date(),
+      date: format(new Date(), "yyyy-MM-dd"),
       time: "",
       payRate: "",
       requiredSkills: [],
@@ -141,6 +179,8 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
     setSelectedSkills([]);
     setSkillInput("");
     setFilteredSkills(allSkills);
+    setStartTime(undefined);
+    setEndTime(undefined);
     alert("Job created successfully!");
   };
 
@@ -158,17 +198,21 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
   };
 
   const handleSkillSelect = (skill: Skill) => {
-    if (!selectedSkills.includes(skill)) {
+    if (!selectedSkills.find((s) => s.id === skill.id)) {
       setSelectedSkills([...selectedSkills, skill]);
     }
     setSkillInput("");
-    setFilteredSkills(allSkills.filter((s) => !selectedSkills.includes(s)));
+    setFilteredSkills(
+      allSkills.filter((s) => !selectedSkills.find((sel) => sel.id === s.id))
+    );
   };
 
   const handleSkillRemove = (skill: Skill) => {
     const updatedSkills = selectedSkills.filter((s) => s.id !== skill.id);
     setSelectedSkills(updatedSkills);
-    setFilteredSkills(allSkills.filter((s) => !updatedSkills.includes(s)));
+    setFilteredSkills(
+      allSkills.filter((s) => !updatedSkills.find((sel) => sel.id === sel.id))
+    );
   };
 
   const handleSkillKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -179,15 +223,21 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
         (s) => s.name.toLowerCase() === skillName.toLowerCase()
       );
 
-      if (existingSkill && !selectedSkills.includes(existingSkill)) {
+      if (
+        existingSkill &&
+        !selectedSkills.find((s) => s.id === existingSkill.id)
+      ) {
         setSelectedSkills([...selectedSkills, existingSkill]);
       } else if (!existingSkill) {
-        // Optionally handle custom skills if allowed
         alert("Skill not found.");
       }
 
       setSkillInput("");
-      setFilteredSkills(allSkills.filter((s) => !selectedSkills.includes(s)));
+      setFilteredSkills(
+        allSkills.filter(
+          (s) => !selectedSkills.find((sel) => sel.id === sel.id)
+        )
+      );
     }
   };
 
@@ -195,7 +245,9 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-6 rounded-lg">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-semibold">Create New Job</DialogTitle>
+          <DialogTitle className="text-2xl font-semibold">
+            Create New Job
+          </DialogTitle>
           <DialogDescription className="mt-2 text-gray-600">
             Fill in the details for the new job posting.
           </DialogDescription>
@@ -224,13 +276,18 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
 
           {/* Facility */}
           <div>
-            <Label htmlFor="facility" className="block font-medium text-gray-700">
+            <Label
+              htmlFor="facility"
+              className="block font-medium text-gray-700"
+            >
               Facility
             </Label>
             <Input
               id="facility"
               value={newJob.facility}
-              onChange={(e) => setNewJob({ ...newJob, facility: e.target.value })}
+              onChange={(e) =>
+                setNewJob({ ...newJob, facility: e.target.value })
+              }
               placeholder="Enter facility name"
               required
               className="mt-1"
@@ -239,11 +296,16 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
 
           {/* Department */}
           <div>
-            <Label htmlFor="department" className="block font-medium text-gray-700">
+            <Label
+              htmlFor="department"
+              className="block font-medium text-gray-700"
+            >
               Department
             </Label>
             <Select
-              onValueChange={(value) => setNewJob({ ...newJob, department: value })}
+              onValueChange={(value) =>
+                setNewJob({ ...newJob, department: value })
+              }
               defaultValue=""
               required
             >
@@ -266,11 +328,16 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
 
           {/* Shift Type */}
           <div>
-            <Label htmlFor="shiftType" className="block font-medium text-gray-700">
+            <Label
+              htmlFor="shiftType"
+              className="block font-medium text-gray-700"
+            >
               Shift Type
             </Label>
             <Select
-              onValueChange={(value) => setNewJob({ ...newJob, shiftType: value })}
+              onValueChange={(value) =>
+                setNewJob({ ...newJob, shiftType: value })
+              }
               defaultValue=""
               required
             >
@@ -287,64 +354,88 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
             </Select>
           </div>
 
-          {/* Date and Time */}
-          <div className="flex flex-col sm:flex-row sm:space-x-6">
-            {/* Date */}
-            <div className="flex-1">
-              <Label htmlFor="date" className="block font-medium text-gray-700">
-                Date
-              </Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal mt-1",
-                      !newJob.date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-5 w-5 text-gray-500" />
-                    {newJob.date ? format(newJob.date, "PPP") : "Select date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <input
-                    type="date"
-                    value={format(newJob.date, "yyyy-MM-dd")}
-                    onChange={(e) =>
-                      setNewJob({ ...newJob, date: new Date(e.target.value) })
-                    }
-                    className="w-full p-2"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+          {/* Date Picker */}
+          <div>
+            <Label htmlFor="date" className="block font-medium text-gray-700">
+              Date
+            </Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal mt-1",
+                    !newJob.date && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-5 w-5 text-gray-500" />
+                  {newJob.date
+                    ? format(new Date(newJob.date), "PPP")
+                    : "Select date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <input
+                  type="date"
+                  value={newJob.date}
+                  onChange={(e) =>
+                    setNewJob({ ...newJob, date: e.target.value })
+                  }
+                  className="w-full p-2"
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
 
-            {/* Time */}
-            <div className="flex-1 mt-4 sm:mt-0">
-              <Label htmlFor="time" className="block font-medium text-gray-700">
-                Time
-              </Label>
-              <Input
-                id="time"
-                value={newJob.time}
-                onChange={(e) => setNewJob({ ...newJob, time: e.target.value })}
-                placeholder="e.g., 9:00 AM - 5:00 PM"
-                required
-                className="mt-1"
-              />
+          {/* Time Picker */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:space-x-4">
+              {/* Start Time */}
+              <div className="flex-1">
+                <Label
+                  htmlFor="startTime"
+                  className="block text-sm text-gray-600"
+                >
+                  Start Time
+                </Label>
+                <TimePicker
+                  setDate={setStartTime}
+                  date={startTime}
+                  // id="startTime"
+                />
+              </div>
+
+              {/* End Time */}
+              <div className="flex-1">
+                <Label
+                  htmlFor="endTime"
+                  className="block text-sm text-gray-600"
+                >
+                  End Time
+                </Label>
+                <TimePicker
+                  setDate={setEndTime}
+                  date={endTime}
+                  // id="endTime"
+                />
+              </div>
             </div>
           </div>
 
           {/* Pay Rate */}
           <div>
-            <Label htmlFor="payRate" className="block font-medium text-gray-700">
+            <Label
+              htmlFor="payRate"
+              className="block font-medium text-gray-700"
+            >
               Pay Rate
             </Label>
             <Input
               id="payRate"
               value={newJob.payRate}
-              onChange={(e) => setNewJob({ ...newJob, payRate: e.target.value })}
+              onChange={(e) =>
+                setNewJob({ ...newJob, payRate: e.target.value })
+              }
               placeholder="e.g., $30/hr"
               required
               className="mt-1"
@@ -353,7 +444,10 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
 
           {/* Required Skills with Autocomplete and Custom Input */}
           <div>
-            <Label htmlFor="requiredSkills" className="block font-medium text-gray-700">
+            <Label
+              htmlFor="requiredSkills"
+              className="block font-medium text-gray-700"
+            >
               Required Skills
             </Label>
             <div className="relative mt-1">
@@ -406,13 +500,18 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
 
           {/* Job Description */}
           <div>
-            <Label htmlFor="description" className="block font-medium text-gray-700">
+            <Label
+              htmlFor="description"
+              className="block font-medium text-gray-700"
+            >
               Job Description
             </Label>
             <Textarea
               id="description"
               value={newJob.description}
-              onChange={(e) => setNewJob({ ...newJob, description: e.target.value })}
+              onChange={(e) =>
+                setNewJob({ ...newJob, description: e.target.value })
+              }
               placeholder="Enter job description..."
               required
               className="mt-1"
@@ -425,7 +524,9 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
             <Switch
               id="urgent"
               checked={newJob.urgent}
-              onCheckedChange={(checked) => setNewJob({ ...newJob, urgent: checked })}
+              onCheckedChange={(checked) =>
+                setNewJob({ ...newJob, urgent: checked })
+              }
             />
             <Label htmlFor="urgent" className="ml-2 text-gray-700">
               Mark as Urgent

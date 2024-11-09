@@ -61,6 +61,7 @@ interface FormData {
   license: FileList;
   certifications: FileList;
   otherDocuments: FileList;
+  profilePictureUrl?: string; // Add this line
 }
 
 interface Experience {
@@ -79,6 +80,7 @@ const NurseProfilePageComponent: React.FC = () => {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(true); // Added loading state
   const [initialData, setInitialData] = useState<FormData | null>(null);
+  const [skillsList, setSkillsList] = useState<string[]>([]);
 
   const {
     register,
@@ -136,7 +138,32 @@ const NurseProfilePageComponent: React.FC = () => {
       }
     };
 
+    const fetchSkills = async () => {
+      try {
+        const response = await fetch("/api/skills", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            // Include authorization header if using JWT stored in localStorage or cookies
+            // "Authorization": `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const dataArray = data.map((skill: { name: string }) => skill.name)
+          setSkillsList(dataArray);
+        } else {
+          console.error("Failed to fetch skills data");
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+        setIsLoading(false); // Stop loading on error
+      }
+    }
+
     fetchProfile();
+    fetchSkills();
   }, []);
 
   const populateForm = (data: any) => {
@@ -860,23 +887,7 @@ const NurseProfilePageComponent: React.FC = () => {
                         name="skills"
                         render={({ field }) => (
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
-                            {[
-                              "ICU Experience",
-                              "Pediatric Care",
-                              "Emergency Response",
-                              "Phlebotomy",
-                              "Medication Administration",
-                              "Patient Assessment",
-                              "Wound Care",
-                              "IV Therapy",
-                              "Electronic Medical Records (EMR)",
-                              "Geriatric Care",
-                              "Neonatal Care",
-                              "Surgical Assistance",
-                              "Cardiac Care",
-                              "Oncology Nursing",
-                              "Mental Health Nursing",
-                            ].map((skill) => (
+                            {skillsList.map((skill) => (
                               <div
                                 key={skill}
                                 className="flex items-center space-x-2"

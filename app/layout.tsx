@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import "./globals.css";
-import { UserContextProvider } from "./context/UserContext";
+import { UserContextProvider } from "@/app/context/UserContext";
+import { LoadingProvider } from '@/app/context/LoadingContext';
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 
 export const metadata: Metadata = {
   title: "Farrer Park Hospital",
@@ -16,7 +20,10 @@ export default function RootLayout({
   return (
     <html lang="en" style={{ overflowY: "hidden" }}>
       <body className={GeistSans.className}>
+        <LoadingProvider>
         <UserContextProvider>{children}</UserContextProvider>
+        </LoadingProvider>
+        <ToastContainer position="top-right" autoClose={5000} hideProgressBar />
       </body>
     </html>
   );

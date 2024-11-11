@@ -33,38 +33,20 @@ import { cn } from "@/lib/utils";
 import { format, parse } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { TimePicker } from "@/components/ui/time-picker";
+import { Job } from "@/app/types"; 
 
 interface Skill {
   id: number;
   name: string;
 }
 
-interface Job {
-  id: number;
-  title: string;
-  facility: string;
-  department: string;
-  shiftType: string;
-  status: "ACTIVE" | "CLOSED" | "DRAFT";
-  applicants: number;
-  date: string; // ISO date string (e.g., "2025-09-16")
-  time: string; // Combined time string (e.g., "6:45 PM - 8:00 PM")
-  payRate: string;
-  urgent: boolean;
-  requiredSkills: string[]; // Skill names
-  description: string;
-}
-
 interface EditJobDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   job: Job | null;
-  onUpdate: (
-    updatedJob: Omit<Job, "status" | "applicants" | "requiredSkills"> & {
-      requiredSkills: string[];
-    }
-  ) => void;
+  onUpdate: (updatedJob: Job) => Promise<void>;
 }
+
 
 const EditJobDialog: React.FC<EditJobDialogProps> = ({
   open,
@@ -248,11 +230,9 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
 
     const timeString = `${formatTime(startTime)} - ${formatTime(endTime)}`;
 
-    const updatedJob: Omit<Job, "status" | "applicants" | "requiredSkills"> & {
-      requiredSkills: string[];
-    } = {
+    const updatedJob: Job = {
       ...editingJob,
-      time: timeString, // Update the combined time string
+      time: timeString,
       requiredSkills: selectedSkills.map((skill) => skill.name),
     };
 
@@ -379,8 +359,6 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
                   <SelectItem value="Day">Day</SelectItem>
                   <SelectItem value="Night">Night</SelectItem>
                   <SelectItem value="Swing">Swing</SelectItem>
-                  <SelectItem value="Per Diem">Per Diem</SelectItem>
-                  <SelectItem value="Travel">Travel</SelectItem>
                 </SelectContent>
               </Select>
             </div>

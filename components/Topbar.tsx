@@ -14,10 +14,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import IndeterminateProgressBar from './ui/indeterminateProgress';
 
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { UserContext } from "@/app/context/UserContext";
+import { LoadingContext } from '@/app/context/LoadingContext';
 
 interface TopbarProps {
   role: 'admin' | 'nurse';
@@ -27,9 +29,12 @@ interface TopbarProps {
 const Topbar: React.FC<TopbarProps> = ({ role, toggleSidebar }) => {
   const router = useRouter();
   const { user } = useContext(UserContext);
+  const { isLoading, startLoading, stopLoading } = useContext(LoadingContext);
 
   const handleLogout = async () => {
     try {
+      startLoading(); // Start loading
+
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
@@ -42,6 +47,8 @@ const Topbar: React.FC<TopbarProps> = ({ role, toggleSidebar }) => {
       }
     } catch (error) {
       console.error('Logout error:', error);
+    } finally {
+      stopLoading(); // End loading
     }
   };
 
@@ -126,6 +133,7 @@ const Topbar: React.FC<TopbarProps> = ({ role, toggleSidebar }) => {
           </DropdownMenu>
         </div>
       </div>
+      {isLoading && <IndeterminateProgressBar />}
     </header>
   );
 };

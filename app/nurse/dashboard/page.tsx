@@ -11,10 +11,10 @@ import JobCard from "@/components/JobCard";
 import { Briefcase, ClipboardList, Clock, Lightbulb } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import Progress from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserContext } from "@/app/context/UserContext";
+import { LoadingContext } from "@/app/context/LoadingContext"; // Import LoadingContext
 
 interface Job {
   id: number;
@@ -46,7 +46,6 @@ interface Shift {
 const NurseDashboardComponent: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [profileCompletion, setProfileCompletion] = useState(60); // Example value
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   const [jobMatches, setJobMatches] = useState<Job[]>([]);
@@ -55,6 +54,9 @@ const NurseDashboardComponent: React.FC = () => {
 
   // Use user from UserContext
   const { user } = useContext(UserContext);
+
+  // Use LoadingContext
+  const { isLoading, startLoading, stopLoading } = useContext(LoadingContext);
 
   useEffect(() => {
     const handleResize = () => {
@@ -72,6 +74,8 @@ const NurseDashboardComponent: React.FC = () => {
   // Fetch data from API routes when the component mounts
   useEffect(() => {
     const fetchData = async () => {
+      startLoading(); // Start loading
+
       try {
         // Fetch jobs, notifications, and shifts in parallel
         const [jobsResponse, notificationsResponse, shiftsResponse] =
@@ -110,12 +114,12 @@ const NurseDashboardComponent: React.FC = () => {
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
-        setLoading(false);
+        stopLoading(); // End loading
       }
     };
 
     fetchData();
-  }, []);
+  }, [startLoading, stopLoading]);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
@@ -147,7 +151,7 @@ const NurseDashboardComponent: React.FC = () => {
         <main className="flex-1 overflow-y-auto bg-gray-100 p-4">
           <div className="max-w-7xl mx-auto">
             {/* Welcome Message */}
-            {loading || !user ? (
+            {isLoading || !user ? (
               <Skeleton className="h-8 w-48 mb-4" />
             ) : (
               <h1 className="text-2xl font-semibold text-gray-900 mb-6">
@@ -157,7 +161,7 @@ const NurseDashboardComponent: React.FC = () => {
             )}
 
             {/* Enhanced Profile Completion Prompt */}
-            {!loading && profileCompletion < 100 && (
+            {!isLoading && profileCompletion < 100 && (
               <div className="mb-6">
                 <Card className="bg-[#9d2235] text-white">
                   <CardContent className="flex flex-col md:flex-row md:items-center p-6">
@@ -194,7 +198,7 @@ const NurseDashboardComponent: React.FC = () => {
               </div>
             )}
 
-            {loading ? (
+            {isLoading ? (
               // Loading Skeletons
               <div>
                 {/* Quick Stats Skeleton */}

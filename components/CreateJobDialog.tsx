@@ -348,8 +348,6 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
                 <SelectItem value="Day">Day</SelectItem>
                 <SelectItem value="Night">Night</SelectItem>
                 <SelectItem value="Swing">Swing</SelectItem>
-                <SelectItem value="Per Diem">Per Diem</SelectItem>
-                <SelectItem value="Travel">Travel</SelectItem>
               </SelectContent>
             </Select>
           </div>

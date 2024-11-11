@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
@@ -35,6 +35,7 @@ import { format } from "date-fns";
 import { Calendar as CalendarIcon, Upload, X, Lightbulb } from "lucide-react";
 import Progress from "@/components/ui/progress";
 import { Calendar } from "@/components/ui/calendar";
+import { LoadingContext } from "@/app/context/LoadingContext";
 
 interface FormData {
   // Personal Information
@@ -78,7 +79,7 @@ const NurseProfilePageComponent: React.FC = () => {
   const [profileCompletion, setProfileCompletion] = useState(0); // Example value
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Added loading state
+  const { isLoading, startLoading, stopLoading } = useContext(LoadingContext);
   const [initialData, setInitialData] = useState<FormData | null>(null);
   const [skillsList, setSkillsList] = useState<string[]>([]);
 
@@ -113,6 +114,7 @@ const NurseProfilePageComponent: React.FC = () => {
   // Fetch profile data on component mount
   useEffect(() => {
     const fetchProfile = async () => {
+      startLoading(); // Start loading
       try {
         const response = await fetch("/api/nurse/me", {
           method: "GET",
@@ -127,18 +129,18 @@ const NurseProfilePageComponent: React.FC = () => {
           const data = await response.json();
           setInitialData(data);
           populateForm(data);
-          setIsLoading(false); // Data fetched, stop loading
         } else {
           console.error("Failed to fetch profile data");
-          setIsLoading(false); // Even on failure, stop loading
         }
       } catch (error) {
         console.error("Error fetching profile:", error);
-        setIsLoading(false); // Stop loading on error
+      } finally {
+        stopLoading(); // Stop loading
       }
     };
 
     const fetchSkills = async () => {
+      startLoading(); // Start loading
       try {
         const response = await fetch("/api/skills", {
           method: "GET",
@@ -151,20 +153,21 @@ const NurseProfilePageComponent: React.FC = () => {
 
         if (response.ok) {
           const data = await response.json();
-          const dataArray = data.map((skill: { name: string }) => skill.name)
+          const dataArray = data.map((skill: { name: string }) => skill.name);
           setSkillsList(dataArray);
         } else {
           console.error("Failed to fetch skills data");
         }
       } catch (error) {
-        console.error("Error fetching profile:", error);
-        setIsLoading(false); // Stop loading on error
+        console.error("Error fetching skills:", error);
+      } finally {
+        stopLoading(); // Stop loading
       }
-    }
+    };
 
     fetchProfile();
     fetchSkills();
-  }, []);
+  }, [startLoading, stopLoading]);
 
   const populateForm = (data: any) => {
     // Prepare the data for resetting the form
@@ -213,6 +216,7 @@ const NurseProfilePageComponent: React.FC = () => {
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
+    startLoading();
     try {
       const formData = new FormData();
 
@@ -301,6 +305,7 @@ const NurseProfilePageComponent: React.FC = () => {
       console.error("Submission Error:", error);
       // Optionally, set an error state to display an error message
     } finally {
+      stopLoading();
       setIsSubmitting(false);
     }
   };
@@ -812,19 +817,17 @@ const NurseProfilePageComponent: React.FC = () => {
                               <SelectValue placeholder="Select education level" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Diploma">Diploma</SelectItem>
-                              <SelectItem value="Associate">
-                                Associate Degree
-                              </SelectItem>
-                              <SelectItem value="Bachelor">
-                                Bachelor's Degree
-                              </SelectItem>
-                              <SelectItem value="Master">
-                                Master's Degree
-                              </SelectItem>
-                              <SelectItem value="Doctorate">
-                                Doctorate
-                              </SelectItem>
+                              {[
+                                "Bachelor's Degree in Nursing",
+                                "Master's Degree in Nursing",
+                                "Doctorate in Nursing",
+                                "Associate Degree in Nursing",
+                                "Diploma in Nursing",
+                              ].map((level) => (
+                                <SelectItem key={level} value={level}>
+                                  {level}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         )}

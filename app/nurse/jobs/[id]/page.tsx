@@ -2,16 +2,17 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, DollarSign, MapPin, Briefcase, ChevronLeft } from 'lucide-react';
+import { Calendar, Clock, DollarSign, Briefcase, ChevronLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
+import { LoadingContext } from '@/app/context/LoadingContext'; // Import LoadingContext
 
 interface Job {
   id: number;
@@ -38,34 +39,51 @@ const JobDetailsPageComponent: React.FC = () => {
   const params = useParams();
   const id = params?.id as string | undefined;
   const [job, setJob] = useState<Job | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+
+  const { isLoading, startLoading, stopLoading } = useContext(LoadingContext); // Use LoadingContext
 
   useEffect(() => {
     const fetchJob = async () => {
-      setLoading(true);
+      if (!id) return;
+
+      startLoading(); // Start loading
+
       try {
-        const response = await fetch(`/api/jobs/${id}`);
+        const response = await fetch(`/api/jobs/${id}`, {
+          credentials: 'include', // Ensure cookies are sent
+        });
         if (response.ok) {
           const jobData: Job = await response.json();
           setJob(jobData);
         } else {
           setJob(null);
+          console.error('Failed to fetch job listing');
         }
       } catch (error) {
-        console.error("Failed to fetch job listing:", error);
+        console.error('Failed to fetch job listing:', error);
         setJob(null);
       } finally {
-        setLoading(false);
+        stopLoading(); // End loading
       }
     };
 
-    if (id) {
-      fetchJob();
-    }
-  }, [id]);
+    fetchJob();
+  }, [id, startLoading, stopLoading]);
 
   const toggleSidebar = () => {
     // Implement toggle logic if necessary
+  };
+
+  // Handler for navigating back to job listings
+  const handleBackToListings = async () => {
+    try {
+      await router.push('/nurse/jobs/search');
+      // In Next.js App Router, router.push is asynchronous and can be awaited
+      // The new page will handle its own loading state
+    } catch (error) {
+      console.error('Navigation error:', error);
+      stopLoading(); // Stop loading in case of error
+    }
   };
 
   return (
@@ -76,13 +94,12 @@ const JobDetailsPageComponent: React.FC = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <Topbar toggleSidebar={toggleSidebar} role="nurse" />
-
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-5xl mx-auto px-6 py-8">
             {/* Back Button */}
             <Button
               variant="ghost"
-              onClick={() => router.push('/nurse/jobs/search')}
+              onClick={handleBackToListings}
               className="mb-6 flex items-center text-gray-600 hover:text-gray-800"
             >
               <ChevronLeft className="h-5 w-5 mr-1" />
@@ -90,7 +107,7 @@ const JobDetailsPageComponent: React.FC = () => {
             </Button>
 
             {/* Conditional rendering for loading, job not found, or job details */}
-            {loading ? (
+            {isLoading ? (
               <Card className="shadow-lg rounded-lg overflow-hidden">
                 <CardHeader className="p-6">
                   <Skeleton className="h-10 w-1/2 mb-4" />
@@ -107,7 +124,7 @@ const JobDetailsPageComponent: React.FC = () => {
                 <div className="relative h-56 md:h-36">
                   <Image
                     src="/images/bg.png"
-                    alt={job.facilityInfo.name}
+                    alt={job.facility}
                     layout="fill"
                     objectFit="cover"
                     className="transition-transform duration-300 transform hover:scale-105"
@@ -145,13 +162,15 @@ const JobDetailsPageComponent: React.FC = () => {
                       <DollarSign className="h-5 w-5 mr-2" />
                       <span className="font-medium">Pay Rate:&nbsp;</span> {job.payRate}
                     </div>
+                    {/* 
                     <div className="flex items-start text-gray-600">
                       <MapPin className="h-5 w-5 mr-2 mt-1" />
                       <div>
                         <span className="font-medium">Location:&nbsp;</span>
                         <p>{job.facilityInfo.address == '' ? "Farrer Park Hospital" : job.facilityInfo.address }</p>
                       </div>
-                    </div>
+                    </div> 
+                    */}
                     <div className="flex items-start text-gray-600">
                       <Briefcase className="h-5 w-5 mr-2 mt-1" />
                       <div>
@@ -166,14 +185,16 @@ const JobDetailsPageComponent: React.FC = () => {
                     <p className="text-gray-700">{job.description}</p>
                   </div>
 
-                  {/* <div className="mt-6">
+                  {/* 
+                  <div className="mt-6">
                     <h3 className="text-xl font-semibold text-gray-800 mb-2">Responsibilities</h3>
                     <ul className="list-disc list-inside text-gray-700 space-y-1">
                       {job.responsibilities.map((item, index) => (
                         <li key={index}>{item}</li>
                       ))}
                     </ul>
-                  </div> */}
+                  </div> 
+                  */}
 
                   <div className="mt-6">
                     <h3 className="text-xl font-semibold text-gray-800 mb-2">Required Skills & Certifications</h3>

@@ -1,60 +1,81 @@
-// File: /app/api/jobs/[jobId]/applicants/route.ts
+// app/api/jobs/[id]/applicants/route.ts
 
-import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/db";
-import { getUserFromToken } from "@/lib/utils/auth";
+import { NextRequest, NextResponse } from 'next/server';
+import prisma from '@/lib/db';
+import { getUserFromToken } from '@/lib/utils/auth';
+
+interface Applicant {
+  id: number;
+  name: string;
+  email: string;
+  profileImage: string;
+  matchingScore: number;
+  keySkills: string[];
+  experience: number; // in years
+  certifications: string[];
+  bio: string;
+}
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { jobId: string } }
+  { params }: { params: { id: string } }
 ): Promise<NextResponse> {
-  const { jobId } = params;
-  const jobIdNum = parseInt(jobId, 10);
+  const { id } = await params;
+  const jobId = parseInt(id, 10);
 
-  if (isNaN(jobIdNum)) {
-    return NextResponse.json({ message: "Invalid job ID" }, { status: 400 });
+  if (isNaN(jobId)) {
+    return NextResponse.json({ message: 'Invalid job ID' }, { status: 400 });
   }
 
   try {
     const user = await getUserFromToken(req);
+
     if (!user) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    if (user.role !== "ADMIN") {
-      return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+    if (user.role !== 'ADMIN') {
+      return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
     }
 
-    const applicants = await prisma.application.findMany({
-      where: { jobId: jobIdNum, status: "APPLIED" },
+    const applications = await prisma.application.findMany({
+      where: { jobId },
       include: {
         user: {
           select: {
             id: true,
-            name: true,
+            firstName: true,
+            lastName: true,
             email: true,
-            profileImageUrl: true,
+            profilePictureUrl: true,
+            yearsOfExperience: true,
+            skills: {
+              select: {
+                name: true,
+              },
+            },
+            certifications: true,
             bio: true,
           },
         },
       },
     });
 
-    const formattedApplicants = applicants.map((app) => ({
-      id: app.id,
-      name: app.user.name,
+    const applicants: Applicant[] = applications.map((app) => ({
+      id: app.user.id,
+      name: `${app.user.firstName} ${app.user.lastName}`,
       email: app.user.email,
-      profileImage: app.user.profileImageUrl || null,
+      profileImage: app.user.profilePictureUrl || "/default-avatar.png",
       matchingScore: app.matchingScore,
-      keySkills: [], // Assuming you have a way to get skills
-      experience: 0, // Assuming you have a way to get experience
-      certifications: [], // Assuming you have a way to get certifications
-      bio: app.user.bio || null,
+      keySkills: app.user.skills.map(skill => skill.name),
+      experience: app.user.yearsOfExperience || 0,
+      certifications: app.user.certifications,
+      bio: app.user.bio || "",
     }));
 
-    return NextResponse.json({ applicants: formattedApplicants }, { status: 200 });
+    return NextResponse.json(applicants, { status: 200 });
   } catch (error) {
-    console.error("Error fetching applicants:", error);
-    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+    console.error('Error fetching applicants:', error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
   }
 }

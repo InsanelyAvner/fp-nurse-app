@@ -1,6 +1,7 @@
+// components/ViewApplicantsPageComponent.tsx
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useContext } from "react";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { LoadingContext } from '@/app/context/LoadingContext'; // Import LoadingContext
+import Spinner from '@/components/Spinner'; // Import Spinner
+import ApplicantCard from "@/components/ApplicantCard";
+import Link from 'next/link';
 
 // Define Applicant interface
 interface Applicant {
@@ -53,45 +58,14 @@ interface Applicant {
   bio: string;
 }
 
-// Sample data
-const applicantsData: Applicant[] = [
-  {
-    id: 1,
-    name: "Emily Johnson",
-    email: "emily.johnson@example.com",
-    profileImage: "/applicants/emily.jpg",
-    matchingScore: 95,
-    keySkills: ["Critical Care", "Ventilator Management", "Patient Monitoring"],
-    experience: 5,
-    certifications: ["ACLS", "BLS"],
-    bio: "Experienced ICU nurse with a passion for patient care.",
-  },
-  {
-    id: 2,
-    name: "Michael Smith",
-    email: "michael.smith@example.com",
-    profileImage: "/applicants/michael.jpg",
-    matchingScore: 88,
-    keySkills: ["Emergency Response", "Trauma Care"],
-    experience: 4,
-    certifications: ["TNCC", "ENPC"],
-    bio: "Dedicated ER nurse with expertise in trauma situations.",
-  },
-  {
-    id: 3,
-    name: "Sarah Williams",
-    email: "sarah.williams@example.com",
-    profileImage: "/applicants/sarah.jpg",
-    matchingScore: 92,
-    keySkills: ["Pediatric Care", "Patient Education"],
-    experience: 6,
-    certifications: ["PALS", "CPN"],
-    bio: "Compassionate pediatric nurse focused on child health.",
-  },
-  // Add more applicants as needed
-];
+// Define Job interface
+interface Job {
+  id: number;
+  title: string;
+  // Add other relevant fields if needed
+}
 
-// Sort Options Component
+// Sort Options Component (unchanged)
 const SortOptions: React.FC<{
   sortOption: "score" | "experience";
   sortOrder: "asc" | "desc";
@@ -102,7 +76,7 @@ const SortOptions: React.FC<{
 }> = ({ sortOption, sortOrder, setSortOption, setSortOrder }) => (
   <Popover>
     <PopoverTrigger asChild>
-      <Button variant="outline" className="flex items-center">
+      <Button variant="outline" className="flex items-center text-sm px-3 py-1">
         <SortAsc className="mr-2 h-5 w-5" />
         Sort
       </Button>
@@ -110,7 +84,7 @@ const SortOptions: React.FC<{
     <PopoverContent className="w-60 p-4">
       <div className="space-y-4">
         <div>
-          <p className="font-semibold mb-2">Sort By:</p>
+          <p className="font-semibold mb-2 text-sm">Sort By:</p>
           <label className="flex items-center space-x-2 mb-1">
             <input
               type="radio"
@@ -119,7 +93,7 @@ const SortOptions: React.FC<{
               checked={sortOption === "score"}
               onChange={() => setSortOption("score")}
             />
-            <span>Matching Score</span>
+            <span className="text-sm">Matching Score</span>
           </label>
           <label className="flex items-center space-x-2">
             <input
@@ -129,11 +103,11 @@ const SortOptions: React.FC<{
               checked={sortOption === "experience"}
               onChange={() => setSortOption("experience")}
             />
-            <span>Experience</span>
+            <span className="text-sm">Experience</span>
           </label>
         </div>
         <div>
-          <p className="font-semibold mb-2">Order:</p>
+          <p className="font-semibold mb-2 text-sm">Order:</p>
           <label className="flex items-center space-x-2 mb-1">
             <input
               type="radio"
@@ -142,7 +116,7 @@ const SortOptions: React.FC<{
               checked={sortOrder === "desc"}
               onChange={() => setSortOrder("desc")}
             />
-            <span>Descending</span>
+            <span className="text-sm">Descending</span>
           </label>
           <label className="flex items-center space-x-2">
             <input
@@ -152,7 +126,7 @@ const SortOptions: React.FC<{
               checked={sortOrder === "asc"}
               onChange={() => setSortOrder("asc")}
             />
-            <span>Ascending</span>
+            <span className="text-sm">Ascending</span>
           </label>
         </div>
       </div>
@@ -160,84 +134,21 @@ const SortOptions: React.FC<{
   </Popover>
 );
 
-// Applicant Card for Mobile View
-const ApplicantCard: React.FC<{
-  applicant: Applicant;
-  onAccept: (applicant: Applicant) => void;
-  onReject: (applicant: Applicant) => void;
-  onViewProfile: (applicantId: number) => void;
-}> = ({ applicant, onAccept, onReject }) => (
-  <div className="bg-white shadow rounded-lg p-4">
-    <div className="flex items-center">
-      <Avatar className="h-12 w-12">
-        <AvatarImage src={applicant.profileImage} alt={applicant.name} />
-        <AvatarFallback>
-          {applicant.name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")}
-        </AvatarFallback>
-      </Avatar>
-      <div className="ml-4">
-        <div className="text-lg font-medium text-gray-900">
-          {applicant.name}
-        </div>
-        <div className="text-sm text-gray-500">{applicant.email}</div>
-      </div>
-    </div>
-    <div className="mt-4">
-      <div className="flex items-center">
-        <Star className="mr-1 h-5 w-5 text-yellow-500" />
-        <span className="text-sm text-gray-900">
-          Matching Score: {applicant.matchingScore}%
-        </span>
-      </div>
-      <div className="mt-2 text-sm text-gray-900">
-        Experience: {applicant.experience}{" "}
-        {applicant.experience === 1 ? "year" : "years"}
-      </div>
-      <div className="mt-2 flex flex-wrap gap-1">
-        {applicant.keySkills.map((skill) => (
-          <Badge key={skill} variant="secondary" className="text-xs">
-            {skill}
-          </Badge>
-        ))}
-      </div>
-    </div>
-    <div className="mt-4 flex space-x-2">
-      <Button
-        size="sm"
-        variant="success"
-        onClick={() => onAccept(applicant)}
-        className="flex-1 flex items-center justify-center text-sm px-3 py-2"
-      >
-        <CheckCircle className="mr-1 h-4 w-4" />
-        Accept
-      </Button>
-      <Button
-        size="sm"
-        variant="destructive"
-        onClick={() => onReject(applicant)}
-        className="flex-1 flex items-center justify-center text-sm px-3 py-2"
-      >
-        <XCircle className="mr-1 h-4 w-4" />
-        Reject
-      </Button>
-    </div>
-  </div>
-);
-
-// Applicant Row for Desktop View
+// Applicant Row for Desktop View (unchanged)
 const ApplicantRow: React.FC<{
   applicant: Applicant;
   onAccept: (applicant: Applicant) => void;
   onReject: (applicant: Applicant) => void;
   onViewProfile: (applicantId: number) => void;
-}> = ({ applicant, onAccept, onReject }) => (
-  <TableRow className="hover:bg-gray-50">
-    <TableCell className="px-6 py-4 whitespace-nowrap">
+}> = ({ applicant, onAccept, onReject, onViewProfile }) => (
+  <TableRow
+    className="hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
+    onClick={() => onViewProfile(applicant.id)}
+  >
+    
+    <TableCell className="px-4 py-2 whitespace-nowrap">
       <div className="flex items-center">
-        <Avatar className="h-10 w-10">
+        <Avatar className="h-8 w-8">
           <AvatarImage src={applicant.profileImage} alt={applicant.name} />
           <AvatarFallback>
             {applicant.name
@@ -246,43 +157,50 @@ const ApplicantRow: React.FC<{
               .join("")}
           </AvatarFallback>
         </Avatar>
-        <div className="ml-4">
+        <div className="ml-3">
           <div className="text-sm font-medium text-gray-900">
             {applicant.name}
           </div>
-          <div className="text-sm text-gray-500">{applicant.email}</div>
+          <div className="text-xs text-gray-500">{applicant.email}</div>
         </div>
       </div>
     </TableCell>
-    <TableCell className="px-6 py-4 whitespace-nowrap">
+    <TableCell className="px-4 py-2 whitespace-nowrap w-1/12">
       <div className="text-sm text-gray-900">
         {applicant.experience}{" "}
         {applicant.experience === 1 ? "year" : "years"}
       </div>
     </TableCell>
-    <TableCell className="px-6 py-4 whitespace-nowrap">
+    <TableCell className="px-4 py-2 whitespace-nowrap w-1/12">
       <div className="flex items-center">
-        <Star className="mr-1 h-5 w-5 text-yellow-500" />
+        <Star className="mr-1 h-4 w-4 text-yellow-500" />
         <span className="text-sm text-gray-900">
           {applicant.matchingScore}%
         </span>
       </div>
     </TableCell>
-    <TableCell className="px-6 py-4 whitespace-nowrap">
+    <TableCell className="px-4 py-2 whitespace-nowrap">
       <div className="flex flex-wrap gap-1">
         {applicant.keySkills.map((skill) => (
-          <Badge key={skill} variant="secondary" className="text-xs">
+          <Badge
+            key={skill}
+            variant="secondary"
+            className="text-[0.625rem] px-2 py-0.5"
+          >
             {skill}
           </Badge>
         ))}
       </div>
     </TableCell>
-    <TableCell className="px-6 py-4 whitespace-nowrap text-center">
+    <TableCell className="px-4 py-2 whitespace-nowrap text-center w-1/6">
       <div className="flex justify-center space-x-2">
         <Button
           size="sm"
-          variant="default"
-          onClick={() => onAccept(applicant)}
+          variant="success"
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent row click
+            onAccept(applicant);
+          }}
           className="flex items-center text-sm px-3 py-1"
         >
           <CheckCircle className="mr-1 h-4 w-4" />
@@ -291,7 +209,10 @@ const ApplicantRow: React.FC<{
         <Button
           size="sm"
           variant="destructive"
-          onClick={() => onReject(applicant)}
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent row click
+            onReject(applicant);
+          }}
           className="flex items-center text-sm px-3 py-1"
         >
           <XCircle className="mr-1 h-4 w-4" />
@@ -302,19 +223,22 @@ const ApplicantRow: React.FC<{
   </TableRow>
 );
 
+// Applicant Card for Mobile View (unchanged)
+
 // Main Component
 const ViewApplicantsPageComponent: React.FC = () => {
   const userRole: "admin" | "nurse" = "admin"; // Assume admin role for this page
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  const [applicants, setApplicants] = useState<Applicant[]>(applicantsData);
+  const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [sortOption, setSortOption] = useState<"score" | "experience">(
     "score"
   );
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
+  const params = useParams(); // Assuming the job ID is part of the route
 
   // State for Confirmation Dialog
   const [isConfirmOpen, setIsConfirmOpen] = useState<boolean>(false);
@@ -324,6 +248,70 @@ const ViewApplicantsPageComponent: React.FC = () => {
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(
     null
   );
+
+  // Access LoadingContext
+  const { startLoading, stopLoading, isLoading } = useContext(LoadingContext);
+
+  // State for Job Details
+  const [job, setJob] = useState<Job | null>(null);
+  const [isJobLoading, setIsJobLoading] = useState<boolean>(true);
+
+  // Fetch job details
+  useEffect(() => {
+    const fetchJobDetails = async () => {
+      startLoading(); // Start loading for job details
+      try {
+        const jobId = params?.id;
+        if (!jobId) {
+          toast.error("Job ID not found.");
+          return;
+        }
+
+        const response = await fetch(`/api/jobs/${jobId}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch job details.");
+        }
+        const data: Job = await response.json();
+        setJob(data);
+      } catch (error: any) {
+        console.error("Error fetching job details:", error);
+        toast.error(error.message || "Error fetching job details.");
+      } finally {
+        setIsJobLoading(false);
+        stopLoading(); // Stop loading for job details
+      }
+    };
+
+    fetchJobDetails();
+  }, [params, startLoading, stopLoading]);
+
+  // Fetch applicants from the API
+  useEffect(() => {
+    const fetchApplicants = async () => {
+      startLoading(); // Start loading for applicants
+      try {
+        const jobId = params?.id;
+        if (!jobId) {
+          toast.error("Job ID not found.");
+          return;
+        }
+
+        const response = await fetch(`/api/jobs/${jobId}/applicants`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch applicants.");
+        }
+        const data: Applicant[] = await response.json();
+        setApplicants(data);
+      } catch (error: any) {
+        console.error("Error fetching applicants:", error);
+        toast.error(error.message || "Error fetching applicants.");
+      } finally {
+        stopLoading(); // Stop loading for applicants
+      }
+    };
+
+    fetchApplicants();
+  }, [params, startLoading, stopLoading]);
 
   // Sorting and Filtering logic with useMemo for optimization
   const sortedApplicants = useMemo(() => {
@@ -354,25 +342,53 @@ const ViewApplicantsPageComponent: React.FC = () => {
   };
 
   // Handlers for accepting/rejecting applicants
-  const handleConfirmAction = () => {
+  const handleConfirmAction = async () => {
     if (selectedApplicant && actionType) {
-      if (actionType === "accept") {
-        // Implement accept logic (e.g., update status, notify applicant)
-        toast.success(`Accepted applicant: ${selectedApplicant.name}`);
-      } else if (actionType === "reject") {
-        // Implement reject logic (e.g., remove applicant, notify applicant)
-        toast.error(`Rejected applicant: ${selectedApplicant.name}`);
+      startLoading(); // Start loading for action
+      try {
+        const jobId = params?.id;
+        if (!jobId) {
+          throw new Error("Job ID not found.");
+        }
+
+        const response = await fetch(
+          `/api/jobs/${jobId}/applicants/${selectedApplicant.id}/action`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ action: actionType }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Action failed.");
+        }
+
+        // Update the applicants list locally
+        setApplicants((prev) =>
+          prev.filter((app) => app.id !== selectedApplicant.id)
+        );
+
+        // Show success toast
+        toast.success(
+          `${actionType === "accept" ? "Accepted" : "Rejected"} ${
+            selectedApplicant.name
+          }`
+        );
+
+        // Reset dialog state
+        setIsConfirmOpen(false);
+        setActionType(null);
+        setSelectedApplicant(null);
+      } catch (error: any) {
+        console.error("Error performing action:", error);
+        toast.error(error.message || "Error performing action.");
+      } finally {
+        stopLoading(); // Stop loading for action
       }
-
-      // For prototype, remove the applicant from the list
-      setApplicants((prev) =>
-        prev.filter((app) => app.id !== selectedApplicant.id)
-      );
-
-      // Reset dialog state
-      setIsConfirmOpen(false);
-      setActionType(null);
-      setSelectedApplicant(null);
     }
   };
 
@@ -384,11 +400,11 @@ const ViewApplicantsPageComponent: React.FC = () => {
 
   const handleViewProfile = (applicantId: number) => {
     // Navigate to applicant's full profile or open a modal
-    router.push(`/applicants/${applicantId}`);
+    router.push(`/admin/nurses/${applicantId}`);
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 relative">
       {/* Sidebar */}
       <Sidebar
         isSidebarOpen={isSidebarOpen}
@@ -406,12 +422,15 @@ const ViewApplicantsPageComponent: React.FC = () => {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col relative">
         {/* Topbar */}
         <Topbar toggleSidebar={toggleSidebar} role={userRole} />
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 relative">
+          {/* Spinner Overlay */}
+          {isLoading && <Spinner />}
+
           <div className="max-w-7xl mx-auto">
             <Button
               variant="ghost"
@@ -425,7 +444,13 @@ const ViewApplicantsPageComponent: React.FC = () => {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
               <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">
-                Applicants for ICU Nurse Position
+                {isJobLoading ? (
+                  "Loading Job Details..."
+                ) : job ? (
+                  `Applicants for ${job.title}`
+                ) : (
+                  "Applicants"
+                )}
               </h2>
               <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row sm:items-center sm:space-x-4">
                 {/* Search Input */}
@@ -433,7 +458,7 @@ const ViewApplicantsPageComponent: React.FC = () => {
                   placeholder="Search applicants..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full sm:w-64 mb-2 sm:mb-0"
+                  className="w-full sm:w-64 mb-2 sm:mb-0 text-sm"
                   aria-label="Search applicants"
                 />
                 {/* Sort Options */}
@@ -454,8 +479,8 @@ const ViewApplicantsPageComponent: React.FC = () => {
                     <ApplicantCard
                       key={applicant.id}
                       applicant={applicant}
-                      onAccept={openConfirmDialog}
-                      onReject={openConfirmDialog}
+                      onAccept={() => openConfirmDialog(applicant, "accept")}
+                      onReject={() => openConfirmDialog(applicant, "reject")}
                       onViewProfile={handleViewProfile}
                     />
                   ))
@@ -475,23 +500,23 @@ const ViewApplicantsPageComponent: React.FC = () => {
             {/* Applicants Table for Desktop */}
             <div className="hidden sm:block">
               <div className="overflow-x-auto">
-                <div className="w-full overflow-hidden shadow rounded-lg">
-                  <Table className="min-w-full divide-y divide-gray-200">
+                <div className="max-w-5xl mx-auto overflow-hidden shadow rounded-lg">
+                  <Table className="w-full divide-y divide-gray-200">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <TableHead className="px-4 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Name
                         </TableHead>
-                        <TableHead className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <TableHead className="px-4 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
                           Experience
                         </TableHead>
-                        <TableHead className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <TableHead className="px-4 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/12">
                           Matching Score
                         </TableHead>
-                        <TableHead className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <TableHead className="px-4 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Key Skills
                         </TableHead>
-                        <TableHead className="px-6 py-3 bg-gray-50 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <TableHead className="px-4 py-2 bg-gray-50 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                           Actions
                         </TableHead>
                       </TableRow>
@@ -502,8 +527,8 @@ const ViewApplicantsPageComponent: React.FC = () => {
                           <ApplicantRow
                             key={applicant.id}
                             applicant={applicant}
-                            onAccept={openConfirmDialog}
-                            onReject={openConfirmDialog}
+                            onAccept={() => openConfirmDialog(applicant, "accept")}
+                            onReject={() => openConfirmDialog(applicant, "reject")}
                             onViewProfile={handleViewProfile}
                           />
                         ))
@@ -511,7 +536,7 @@ const ViewApplicantsPageComponent: React.FC = () => {
                         <TableRow>
                           <TableCell
                             colSpan={5}
-                            className="px-6 py-4 whitespace-nowrap text-center text-gray-500"
+                            className="px-4 py-2 whitespace-nowrap text-center text-gray-500"
                           >
                             No applicants found.
                           </TableCell>
@@ -520,7 +545,7 @@ const ViewApplicantsPageComponent: React.FC = () => {
                     </TableBody>
                   </Table>
                   {/* Table Footer */}
-                  <div className="px-6 py-4 bg-gray-50 text-right text-sm text-gray-500">
+                  <div className="px-4 py-2 bg-gray-50 text-right text-sm text-gray-500">
                     Showing {sortedApplicants.length}{" "}
                     {sortedApplicants.length === 1 ? "applicant" : "applicants"}
                   </div>
@@ -553,14 +578,15 @@ const ViewApplicantsPageComponent: React.FC = () => {
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
-              <Button variant="outline" onClick={handleCancelAction}>
+              <Button variant="outline" onClick={handleCancelAction} className="text-sm px-4 py-2">
                 Cancel
               </Button>
               <Button
                 className={cn(
                   actionType === "accept"
                     ? "bg-green-600 hover:bg-green-700"
-                    : "bg-red-600 hover:bg-red-700"
+                    : "bg-red-600 hover:bg-red-700",
+                  "text-sm px-4 py-2"
                 )}
                 onClick={handleConfirmAction}
                 aria-label={

@@ -18,6 +18,18 @@ export interface Job {
   updatedAt: string;
 }
 
+export interface Applicant {
+  id: number;
+  name: string;
+  email: string;
+  profileImage: string;
+  matchingScore: number;
+  keySkills: string[];
+  experience: number; // in years
+  certifications: string[];
+  bio: string;
+}
+
 // Define the type for creating a job (excluding certain fields)
 export type CreateJobData = Omit<
   Job,

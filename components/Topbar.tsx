@@ -73,13 +73,14 @@ const Topbar: React.FC<TopbarProps> = ({ role, toggleSidebar }) => {
         {/* Notifications and User Dropdown */}
         <div className="flex items-center space-x-4">
           {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
+          {/* <Button variant="ghost" size="icon" className="relative">
             <Bell size={20} />
             <span className="sr-only">Notifications</span>
             <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#9d2235] text-xs font-semibold text-white flex items-center justify-center">
               3
             </span>
-          </Button>
+          </Button> */}
+          <NotificationButton />
 
           {/* User Dropdown */}
           <DropdownMenu>
@@ -137,5 +138,42 @@ const Topbar: React.FC<TopbarProps> = ({ role, toggleSidebar }) => {
     </header>
   );
 };
+
+const NotificationButton = () => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  
+  const togglePopup = () => {
+    setIsOpen(!isOpen);
+  };
+
+  return (
+    <div className="relative">
+        <Button variant="ghost" size="icon" onClick={togglePopup}>
+            <Bell size={20} />
+            <span className="sr-only">Notifications</span>
+            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#9d2235] text-xs font-semibold text-white flex items-center justify-center">
+                3
+            </span>
+        </Button>
+        {isOpen && <NotificationPopup />}
+    </div>
+  )
+};
+
+const NotificationPopup = () => {
+  return (
+      <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-300 rounded-lg shadow-lg">
+          <div className="p-4">
+              <h3 className="font-bold">Notifications</h3>
+              <ul>
+                  <li>Notification 1</li>
+                  <li>Notification 2</li>
+                  <li>Notification 3</li>
+              </ul>
+          </div>
+      </div>
+  );
+};
+
 
 export default Topbar;

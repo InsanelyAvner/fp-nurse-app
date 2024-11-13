@@ -75,12 +75,28 @@ const config: Config = {
           "80%": { transform: "translateX(-20%) scaleX(0.4)" },
           "100%": { transform: "translateX(0%) scaleX(0.2)" },
         },
+        // This animation shows a disjointed section that looks like a dot on the second turn after 1 iteration of indeterminate-short in indeterminateProgress
+        // I am too tired to care about this for now
+        indeterminate: {
+          '0%': { left: '-35%', right: '100%' },
+          '60%': { left: '100%', right: '-90%' },
+          '100%': { left: '100%', right: '-90%' }
+        },
+        'indeterminate-short': {
+          '0%': { left: '-200%', right: '100%', opacity: '0' },
+          '10%': { left: '-150%', right: '100%', opacity: '1' },
+          '60%': { left: '107%', right: '-8%' },
+          '100%': { left: '107%', right: '-8%' }
+        }
       },
       animation: {
         progress: "progress 1.5s ease-in-out infinite",
+        indeterminate: 'indeterminate 2.1s cubic-bezier(0.65, 0.815, 0.735, 0.395) infinite',
+        'indeterminate-short': 'indeterminate-short 2.1s cubic-bezier(0.165, 0.84, 0.44, 1) infinite 1.15s'
       },
     }
   },
   plugins: [require("tailwindcss-animate")],
 };
+
 export default config;

@@ -1,11 +1,9 @@
 // app/api/nurse/me/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient, DocumentType, Role } from '@prisma/client';
+import { PrismaClient, Role, Specialization, ApplicationStatus } from '@prisma/client';
 import { getUserFromToken } from '@/lib/utils/auth';
-import fs from 'fs/promises';
-import path from 'path';
-import prisma from '@/lib/db';
+import prisma from '@/lib/db'; // Ensure prisma is a singleton instance
 
 // Enable body parsing in Next.js
 export const config = {
@@ -14,27 +12,24 @@ export const config = {
   },
 };
 
+// Extend the UserResponse interface to include skills and dob
 interface UserResponse {
   id: number;
   firstName: string;
   lastName: string;
   email: string;
-  role: string;
-  bio?: string;
+  role: Role;
   contactNumber: string;
-  address: string;
-  dob?: string;
+  postalCode: string;
+  citizenship: string;
+  race: string;
   gender: string;
-  licenseNumber?: string;
-  licenseExpiration?: string;
-  yearsOfExperience?: number;
-  education?: string;
-  certifications: string[];
-  specializations: string[];
-  languages: string[];
-  shiftPreferences: string[];
-  skills: string[];
-  profilePictureUrl?: string;
+  dob: string | null; // Added dob field
+  specialization: Specialization;
+  availableWorkDays: string;
+  frequencyOfWork: number; // Changed to number
+  preferredFacilityType: string;
+  availableWorkTiming: string;
   experiences: {
     id: number;
     facilityName: string;
@@ -44,11 +39,36 @@ interface UserResponse {
     endDate?: string;
     responsibilities: string;
   }[];
-  documents: {
+  shifts: {
     id: number;
-    type: string;
-    fileUrl: string;
-    uploadedAt: string;
+    facility: string;
+    startDate: string;
+    endDate: string;
+    startTime: string;
+    endTime: string;
+    mealBreak: boolean;
+    assignedDepartment: string;
+    assignedSupervisor: string;
+    supervisorRating: number;
+    commentsOnPerformance: string;
+    recommendToRehire: boolean;
+  }[];
+  applications: {
+    id: number;
+    jobId: number;
+    status: ApplicationStatus;
+    matchingScore: number;
+    appliedAt: string;
+    updatedAt: string;
+  }[];
+  notifications: {
+    id: number;
+    message: string;
+    timestamp: string;
+  }[];
+  skills: {
+    id: number;
+    name: string;
   }[];
   createdAt: string;
   updatedAt: string;
@@ -70,8 +90,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       where: { id: user.id },
       include: {
         experiences: true,
-        documents: true,
-        skills: true,
+        shifts: true,
+        applications: true,
+        notifications: true,
+        skills: true, // Include skills in the response
       },
     });
 
@@ -85,37 +107,56 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       lastName: fetchedUser.lastName,
       email: fetchedUser.email,
       role: fetchedUser.role,
-      bio: fetchedUser.bio || undefined,
       contactNumber: fetchedUser.contactNumber,
-      address: fetchedUser.address,
-      dob: fetchedUser.dob ? fetchedUser.dob.toISOString() : undefined,
+      postalCode: fetchedUser.postalCode,
+      citizenship: fetchedUser.citizenship,
+      race: fetchedUser.race,
       gender: fetchedUser.gender,
-      licenseNumber: fetchedUser.licenseNumber || undefined,
-      licenseExpiration: fetchedUser.licenseExpiration
-        ? fetchedUser.licenseExpiration.toISOString()
-        : undefined,
-      yearsOfExperience: fetchedUser.yearsOfExperience || undefined,
-      education: fetchedUser.education || undefined,
-      certifications: fetchedUser.certifications,
-      specializations: fetchedUser.specializations,
-      languages: fetchedUser.languages,
-      shiftPreferences: fetchedUser.shiftPreferences,
-      skills: fetchedUser.skills.map((skill) => skill.name),
-      profilePictureUrl: fetchedUser.profilePictureUrl || undefined,
+      dob: fetchedUser.dob ? fetchedUser.dob.toISOString().split('T')[0] : null, // Included dob
+      specialization: fetchedUser.specialization,
+      availableWorkDays: fetchedUser.availableWorkDays,
+      frequencyOfWork: Number(fetchedUser.frequencyOfWork), // Ensure it's a number
+      preferredFacilityType: fetchedUser.preferredFacilityType,
+      availableWorkTiming: fetchedUser.availableWorkTiming,
       experiences: fetchedUser.experiences.map((exp) => ({
         id: exp.id,
         facilityName: exp.facilityName,
         position: exp.position,
         department: exp.department,
-        startDate: exp.startDate ? exp.startDate.toISOString() : undefined,
-        endDate: exp.endDate ? exp.endDate.toISOString() : undefined,
+        startDate: exp.startDate ? exp.startDate.toISOString().split('T')[0] : undefined,
+        endDate: exp.endDate ? exp.endDate.toISOString().split('T')[0] : undefined,
         responsibilities: exp.responsibilities,
       })),
-      documents: fetchedUser.documents.map((doc) => ({
-        id: doc.id,
-        type: doc.type,
-        fileUrl: doc.fileUrl,
-        uploadedAt: doc.uploadedAt.toISOString(),
+      shifts: fetchedUser.shifts.map((shift) => ({
+        id: shift.id,
+        facility: shift.facility,
+        startDate: shift.startDate.toISOString(),
+        endDate: shift.endDate.toISOString(),
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        mealBreak: shift.mealBreak,
+        assignedDepartment: shift.assignedDepartment,
+        assignedSupervisor: shift.assignedSupervisor,
+        supervisorRating: shift.supervisorRating,
+        commentsOnPerformance: shift.commentsOnPerformance,
+        recommendToRehire: shift.recommendToRehire,
+      })),
+      applications: fetchedUser.applications.map((app) => ({
+        id: app.id,
+        jobId: app.jobId,
+        status: app.status,
+        matchingScore: app.matchingScore,
+        appliedAt: app.appliedAt.toISOString(),
+        updatedAt: app.updatedAt.toISOString(),
+      })),
+      notifications: fetchedUser.notifications.map((notif) => ({
+        id: notif.id,
+        message: notif.message,
+        timestamp: notif.timestamp.toISOString(),
+      })),
+      skills: fetchedUser.skills.map((skill: Skill) => ({
+        id: skill.id,
+        name: skill.name,
       })),
       createdAt: fetchedUser.createdAt.toISOString(),
       updatedAt: fetchedUser.updatedAt.toISOString(),
@@ -139,122 +180,109 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const formData = await req.formData();
-    const fields = Object.fromEntries(formData.entries());
+    // Parse JSON body
+    const data = await req.json();
 
-    // Parse JSON fields
-    const parsedSpecializations = fields.specializations
-      ? JSON.parse(fields.specializations as string)
-      : [];
-    const parsedSkills = fields.skills
-      ? JSON.parse(fields.skills as string).filter((e: string) => e)
-      : [];
-    const parsedLanguages = fields.languages
-      ? JSON.parse(fields.languages as string)
-      : [];
-    const parsedShiftPreferences = fields.shiftPreferences
-      ? JSON.parse(fields.shiftPreferences as string)
-      : [];
-    const parsedCertifications = fields.certifications
-      ? JSON.parse(fields.certifications as string)
-      : [];
+    // Destructure fields from the parsed data
+    const {
+      firstName,
+      lastName,
+      dob,
+      gender,
+      contactNumber,
+      postalCode,
+      citizenship,
+      race,
+      specialization,
+      availableWorkDays,
+      frequencyOfWork,
+      preferredFacilityType,
+      availableWorkTiming,
+      skills,
+      experiences,
+    } = data;
 
-    // Ensure all skills exist in the database
-    const skillsToConnect = await Promise.all(
-      parsedSkills.map(async (skillName: string) => {
-        return await prisma.skill.upsert({
-          where: { name: skillName },
-          update: {},
-          create: { name: skillName },
-        });
-      })
-    );
+    // Validate required fields
+    if (
+      !firstName ||
+      !lastName ||
+      !dob ||
+      !gender ||
+      !contactNumber ||
+      !postalCode ||
+      !citizenship ||
+      !race ||
+      !specialization ||
+      !availableWorkDays ||
+      !frequencyOfWork ||
+      !preferredFacilityType ||
+      !availableWorkTiming
+    ) {
+      return NextResponse.json(
+        { message: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Validate specialization
+    const validSpecializations: Specialization[] = [
+      Specialization.COMMUNITY_HEALTH,
+      Specialization.CRITICAL_CARE,
+      Specialization.GERONTOLOGY,
+      Specialization.EMERGENCY,
+    ];
+
+    if (!validSpecializations.includes(specialization)) {
+      return NextResponse.json(
+        { message: 'Invalid specialization provided' },
+        { status: 400 }
+      );
+    }
 
     // Update user main fields
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: {
-        firstName: fields.firstName as string,
-        lastName: fields.lastName as string,
-        dob: fields.dob ? new Date(fields.dob as string) : null,
-        gender: fields.gender as string,
-        contactNumber: fields.contactNumber as string,
-        address: fields.address as string,
-        licenseNumber: fields.licenseNumber as string,
-        licenseExpiration: fields.licenseExpiration
-          ? new Date(fields.licenseExpiration as string)
-          : null,
-        yearsOfExperience:
-          parseInt(fields.yearsOfExperience as string, 10) || null,
-        education: fields.education as string,
-        bio: fields.bio as string,
-        certifications: parsedCertifications,
-        specializations: parsedSpecializations,
-        languages: parsedLanguages,
-        shiftPreferences: parsedShiftPreferences,
-        skills: {
-          set: skillsToConnect.map((skill) => ({ id: skill.id })),
-        },
+        firstName: firstName as string,
+        lastName: lastName as string,
+        dob: dob ? new Date(dob as string) : null,
+        gender: gender as string,
+        contactNumber: contactNumber as string,
+        postalCode: postalCode as string,
+        citizenship: citizenship as string,
+        race: race as string,
+        specialization: specialization as Specialization,
+        availableWorkDays: availableWorkDays as string,
+        frequencyOfWork: Number(frequencyOfWork),
+        preferredFacilityType: preferredFacilityType as string,
+        availableWorkTiming: availableWorkTiming as string,
       },
       include: {
-        documents: true,
-        skills: true,
+        experiences: true,
+        shifts: true,
+        applications: true,
+        notifications: true,
+        skills: true, // Include skills in the response
       },
     });
 
     // Handle experiences array
-    const experiences: Array<{
+    const experiencesData: Array<{
       facilityName: string;
       position: string;
       department: string;
       startDate: Date | null;
       endDate: Date | null;
       responsibilities: string;
-    }> = [];
+    }> = experiences || [];
 
-    Object.keys(fields).forEach((key) => {
-      const match = key.match(/^experiences\[(\d+)\]\[(\w+)\]$/);
-      if (match) {
-        const index = parseInt(match[1], 10);
-        const field = match[2];
-
-        if (!experiences[index]) {
-          experiences[index] = {
-            facilityName: '',
-            position: '',
-            department: '',
-            startDate: null,
-            endDate: null,
-            responsibilities: '',
-          };
-        }
-
-        if (field === 'facilityName')
-          experiences[index].facilityName = fields[key] as string;
-        if (field === 'position')
-          experiences[index].position = fields[key] as string;
-        if (field === 'department')
-          experiences[index].department = fields[key] as string;
-        if (field === 'startDate') {
-          const date = fields[key] as string;
-          experiences[index].startDate = date ? new Date(date) : null;
-        }
-        if (field === 'endDate') {
-          const date = fields[key] as string;
-          experiences[index].endDate = date ? new Date(date) : null;
-        }
-        if (field === 'responsibilities')
-          experiences[index].responsibilities = fields[key] as string;
-      }
-    });
-
-    // Update experiences
+    // Update experiences: delete existing and create new ones
     await prisma.experience.deleteMany({
       where: { userId: user.id },
     });
 
     await Promise.all(
-      experiences.map((exp) =>
+      experiencesData.map((exp) =>
         prisma.experience.create({
           data: {
             userId: user.id,
@@ -268,6 +296,36 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         })
       )
     );
+
+    // Handle Skills Update
+    if (Array.isArray(skills)) {
+      // Fetch existing skills from the database
+      const existingSkills = await prisma.skill.findMany({
+        where: {
+          id: {
+            in: skills,
+          },
+        },
+      });
+
+      // Identify skills to connect
+      const connectSkills = existingSkills.map((skill) => ({
+        id: skill.id,
+      }));
+
+      // Update user's skills
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          skills: {
+            set: [], // Remove existing connections
+            connect: connectSkills,
+          },
+        },
+      });
+
+      console.log(`Updated skills for userId ${user.id}`);
+    }
 
     return NextResponse.json(
       { message: 'Profile updated successfully' },

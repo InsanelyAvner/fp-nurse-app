@@ -1,4 +1,4 @@
-// schema.prisma
+// prisma/schema.prisma
 
 datasource db {
   provider = "postgresql"
@@ -27,55 +27,42 @@ enum ApplicationStatus {
   WITHDRAWN
 }
 
-enum DocumentType {
-  RESUME
-  LICENSE
-  CERTIFICATION
-  OTHER
+enum Specialization {
+  COMMUNITY_HEALTH
+  CRITICAL_CARE
+  GERONTOLOGY
+  EMERGENCY
 }
 
 model User {
-  id                Int               @id @default(autoincrement())
-  firstName         String
-  lastName          String
-  dob               DateTime?
-  gender            String
-  contactNumber     String
-  email             String            @unique
-  address           String
-  role              Role              @default(USER)
-  password          String
-  licenseNumber     String?
-  licenseExpiration DateTime?
-  yearsOfExperience Int?
-  education         String?
-  certifications    String[]          @default([]) // Add this line
-  specializations   String[]          @default([])
-  languages         String[]          @default([])
-  shiftPreferences  String[]          @default([])
-  bio               String?
-  skills            Skill[]           @relation("UserSkills")
-  experiences       Experience[]
-  documents         Document[]
-  applications      Application[]
-  notifications     Notification[]
-  shifts            Shift[]
-  profilePictureUrl String?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  id                    Int                 @id @default(autoincrement())
+  firstName             String
+  lastName              String
+  dob                   DateTime?
+  gender                String
+  contactNumber         String
+  email                 String              @unique
+  postalCode            String
+  citizenship           String
+  race                  String
+  role                  Role                @default(USER)
+  password              String
+  specialization        Specialization
+  availableWorkDays     String
+  frequencyOfWork       Int
+  preferredFacilityType String
+  availableWorkTiming   String
+  experiences           Experience[]
+  applications          Application[]
+  notifications         Notification[]
+  shifts                Shift[]
+  skills                Skill[]             @relation("UserSkills")
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
 
   @@index([role])
 }
 
-// Skill Model - Represents Skills that Users have and Jobs require
-model Skill {
-  id     Int     @id @default(autoincrement())
-  name   String  @unique
-  users  User[]  @relation("UserSkills")
-  jobs   Job[]   @relation("JobSkills")
-}
-
-// Job Model - Represents Job Postings Created by Admins
 model Job {
   id             Int            @id @default(autoincrement())
   title          String
@@ -88,15 +75,14 @@ model Job {
   payRate        String
   urgent         Boolean        @default(false)
   status         JobStatus      @default(ACTIVE)
-  requiredSkills Skill[]        @relation("JobSkills")
   applications   Application[]
+  requiredSkills Skill[]         @relation("JobSkills")
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
   @@index([status, startDateTime])
 }
 
-// Application Model - Represents Applications Submitted by Nurses
 model Application {
   id            Int               @id @default(autoincrement())
   user          User              @relation(fields: [userId], references: [id])
@@ -108,10 +94,9 @@ model Application {
   appliedAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
-  @@unique([userId, jobId])
+  @@unique([userId, jobId], name: "user_job_unique")
 }
 
-// Notification Model - Represents Notifications for Users
 model Notification {
   id        Int      @id @default(autoincrement())
   user      User     @relation(fields: [userId], references: [id])
@@ -122,41 +107,44 @@ model Notification {
   @@index([userId, timestamp])
 }
 
-// Shift Model - Represents Upcoming Shifts for Users
 model Shift {
-  id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    Int
-  facility  String
-  date      DateTime
-  time      String // e.g., "7:00 AM - 7:00 PM"
+  id                    Int       @id @default(autoincrement())
+  user                  User      @relation(fields: [userId], references: [id])
+  userId                Int
+  facility              String
+  startDate             DateTime
+  endDate               DateTime
+  startTime             String
+  endTime               String
+  mealBreak             Boolean
+  assignedDepartment    String
+  assignedSupervisor    String
+  supervisorRating      Int
+  commentsOnPerformance String
+  recommendToRehire     Boolean
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  @@index([userId, date])
+  @@index([userId, startDate])
 }
 
-// Experience Model - Represents Work Experiences of Users
 model Experience {
-  id              Int      @id @default(autoincrement())
-  user            User     @relation(fields: [userId], references: [id])
-  userId          Int
-  facilityName    String
-  position        String
-  department      String
-  startDate       DateTime?
-  endDate         DateTime?
+  id               Int       @id @default(autoincrement())
+  user             User      @relation(fields: [userId], references: [id])
+  userId           Int
+  facilityName     String
+  position         String
+  department       String
+  startDate        DateTime?
+  endDate          DateTime?
   responsibilities String
 
   @@index([userId, facilityName])
 }
 
-// Document Model - Represents Documents Uploaded by Users
-model Document {
-  id         Int          @id @default(autoincrement())
-  user       User         @relation(fields: [userId], references: [id])
-  userId     Int
-  type       DocumentType
-  fileUrl    String       // URL or path to the uploaded document
-  uploadedAt DateTime     @default(now())
-
-  @@index([userId, type])
+model Skill {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  jobs  Job[]  @relation("JobSkills")
+  users User[] @relation("UserSkills")
 }

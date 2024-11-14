@@ -69,7 +69,7 @@ const useJobSearch = (): UseJobSearchReturn => {
   const fetchJobs = useCallback(async () => {
     startLoading();
     try {
-      const hideAppliedJobs = false; // Adjust based on requirements
+      const hideAppliedJobs = true; // Adjust based on requirements
 
       const response = await fetch(`/api/jobs?hideAppliedJobs=${hideAppliedJobs}`, {
         method: "GET",

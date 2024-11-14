@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
@@ -32,10 +32,15 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, Upload, X, Lightbulb } from "lucide-react";
+import { Calendar as CalendarIcon, X, Lightbulb } from "lucide-react";
 import Progress from "@/components/ui/progress";
 import { Calendar } from "@/components/ui/calendar";
 import { LoadingContext } from "@/app/context/LoadingContext";
+
+interface Skill {
+  id: number;
+  name: string;
+}
 
 interface FormData {
   // Personal Information
@@ -45,24 +50,18 @@ interface FormData {
   gender: string;
   contactNumber: string;
   email: string;
-  address: string;
+  postalCode: string;
+  citizenship: string;
+  race: string;
   // Professional Information
-  licenseNumber: string;
-  licenseExpiration: Date | null;
-  yearsOfExperience: number;
-  education: string;
-  specializations: string[];
-  skills: string[];
-  languages: string[];
-  shiftPreferences: string[];
+  specialization: string;
+  availableWorkDays: string; // Reverted to single selection (e.g., Weekdays, Weekends)
+  frequencyOfWork: number;
+  preferredFacilityType: string;
+  availableWorkTiming: string;
+  skills: number[];
   // Work Experience
   experiences: Experience[];
-  // Documents
-  resume: FileList;
-  license: FileList;
-  certifications: FileList;
-  otherDocuments: FileList;
-  profilePictureUrl?: string; // Add this line
 }
 
 interface Experience {
@@ -76,23 +75,36 @@ interface Experience {
 
 const NurseProfilePageComponent: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [profileCompletion, setProfileCompletion] = useState(0); // Example value
+  const [profileCompletion, setProfileCompletion] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const { isLoading, startLoading, stopLoading } = useContext(LoadingContext);
-  const [initialData, setInitialData] = useState<FormData | null>(null);
-  const [skillsList, setSkillsList] = useState<string[]>([]);
+  const [skillsList, setSkillsList] = useState<Skill[]>([]);
 
   const {
     register,
     handleSubmit,
     control,
     watch,
-    setValue,
     formState: { errors },
     reset,
   } = useForm<FormData>({
     defaultValues: {
+      firstName: "",
+      lastName: "",
+      dob: null,
+      gender: "",
+      contactNumber: "",
+      email: "",
+      postalCode: "",
+      citizenship: "",
+      race: "",
+      specialization: "",
+      availableWorkDays: "", // Changed to single selection
+      frequencyOfWork: 1,
+      preferredFacilityType: "",
+      availableWorkTiming: "",
+      skills: [],
       experiences: [
         {
           facilityName: "",
@@ -111,199 +123,117 @@ const NurseProfilePageComponent: React.FC = () => {
     name: "experiences",
   });
 
-  // Fetch profile data on component mount
   useEffect(() => {
-    const fetchProfile = async () => {
-      startLoading(); // Start loading
+    const fetchData = async () => {
+      startLoading();
       try {
-        const response = await fetch("/api/nurse/me", {
+        const profileResponse = await fetch("/api/nurse/me", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            // Include authorization header if using JWT stored in localStorage or cookies
-            // "Authorization": `Bearer ${token}`,
           },
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          setInitialData(data);
-          populateForm(data);
-        } else {
-          console.error("Failed to fetch profile data");
-        }
-      } catch (error) {
-        console.error("Error fetching profile:", error);
-      } finally {
-        stopLoading(); // Stop loading
-      }
-    };
-
-    const fetchSkills = async () => {
-      startLoading(); // Start loading
-      try {
-        const response = await fetch("/api/skills", {
+        const skillsResponse = await fetch("/api/skills", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            // Include authorization header if using JWT stored in localStorage or cookies
-            // "Authorization": `Bearer ${token}`,
           },
         });
 
-        if (response.ok) {
-          const data = await response.json();
-          const dataArray = data.map((skill: { name: string }) => skill.name);
-          setSkillsList(dataArray);
+        if (profileResponse.ok && skillsResponse.ok) {
+          const profileData = await profileResponse.json();
+          const skillsData: Skill[] = await skillsResponse.json();
+
+          setSkillsList(skillsData);
+
+          const profileSkillsIds = profileData.skills
+            ? profileData.skills.map((skill: Skill) => skill.id)
+            : [];
+
+          const availableWorkDays = profileData.availableWorkDays || "";
+
+          const formValues: FormData = {
+            firstName: profileData.firstName || "",
+            lastName: profileData.lastName || "",
+            dob: profileData.dob ? new Date(profileData.dob) : null,
+            gender: profileData.gender || "",
+            contactNumber: profileData.contactNumber || "",
+            email: profileData.email || "",
+            postalCode: profileData.postalCode || "",
+            citizenship: profileData.citizenship || "",
+            race: profileData.race || "",
+            specialization: profileData.specialization || "",
+            availableWorkDays: availableWorkDays,
+            frequencyOfWork: profileData.frequencyOfWork || 1,
+            preferredFacilityType: profileData.preferredFacilityType || "",
+            availableWorkTiming: profileData.availableWorkTiming || "",
+            skills: profileSkillsIds,
+            experiences: profileData.experiences
+              ? profileData.experiences.map((exp: any) => ({
+                  facilityName: exp.facilityName || "",
+                  position: exp.position || "",
+                  department: exp.department || "",
+                  startDate: exp.startDate ? new Date(exp.startDate) : null,
+                  endDate: exp.endDate ? new Date(exp.endDate) : null,
+                  responsibilities: exp.responsibilities || "",
+                }))
+              : [
+                  {
+                    facilityName: "",
+                    position: "",
+                    department: "",
+                    startDate: null,
+                    endDate: null,
+                    responsibilities: "",
+                  },
+                ],
+          };
+
+          reset(formValues);
         } else {
-          console.error("Failed to fetch skills data");
+          console.error("Failed to fetch profile or skills data");
         }
       } catch (error) {
-        console.error("Error fetching skills:", error);
+        console.error("Error fetching data:", error);
       } finally {
-        stopLoading(); // Stop loading
+        stopLoading();
       }
     };
 
-    fetchProfile();
-    fetchSkills();
-  }, [startLoading, stopLoading]);
-
-  const populateForm = (data: any) => {
-    // Prepare the data for resetting the form
-    const formValues = {
-      firstName: data.firstName || "",
-      lastName: data.lastName || "",
-      dob: data.dob ? new Date(data.dob) : null,
-      gender: data.gender || "",
-      contactNumber: data.contactNumber || "",
-      email: data.email || "",
-      address: data.address || "",
-      licenseNumber: data.licenseNumber || "",
-      licenseExpiration: data.licenseExpiration
-        ? new Date(data.licenseExpiration)
-        : null,
-      yearsOfExperience: data.yearsOfExperience || 0,
-      education: data.education || "",
-      specializations: data.specializations || [],
-      skills: data.skills || [], // Corrected line
-      languages: data.languages || [],
-      shiftPreferences: data.shiftPreferences || [],
-      experiences: data.experiences
-        ? data.experiences.map((exp: any) => ({
-            facilityName: exp.facilityName || "",
-            position: exp.position || "",
-            department: exp.department || "",
-            startDate: exp.startDate ? new Date(exp.startDate) : null,
-            endDate: exp.endDate ? new Date(exp.endDate) : null,
-            responsibilities: exp.responsibilities || "",
-          }))
-        : [
-            {
-              facilityName: "",
-              position: "",
-              department: "",
-              startDate: null,
-              endDate: null,
-              responsibilities: "",
-            },
-          ],
-    };
-
-    // Reset the form with the prepared values
-    reset(formValues);
-  };
+    fetchData();
+  }, [startLoading, stopLoading, reset]);
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     startLoading();
     try {
-      const formData = new FormData();
-
-      // Append personal and professional information
-      formData.append("firstName", data.firstName);
-      formData.append("lastName", data.lastName);
-      formData.append("dob", data.dob ? data.dob.toISOString() : "");
-      formData.append("gender", data.gender);
-      formData.append("contactNumber", data.contactNumber);
-      formData.append("email", data.email);
-      formData.append("address", data.address);
-      formData.append("licenseNumber", data.licenseNumber);
-      formData.append(
-        "licenseExpiration",
-        data.licenseExpiration ? data.licenseExpiration.toISOString() : ""
-      );
-      formData.append("yearsOfExperience", data.yearsOfExperience.toString());
-      formData.append("education", data.education);
-      formData.append("specializations", JSON.stringify(data.specializations));
-      formData.append("skills", JSON.stringify(data.skills));
-      formData.append("languages", JSON.stringify(data.languages));
-      formData.append(
-        "shiftPreferences",
-        JSON.stringify(data.shiftPreferences)
-      );
-
-      // Append experiences
-      data.experiences.forEach((exp, index) => {
-        formData.append(
-          `experiences[${index}][facilityName]`,
-          exp.facilityName
-        );
-        formData.append(`experiences[${index}][position]`, exp.position);
-        formData.append(`experiences[${index}][department]`, exp.department);
-        formData.append(
-          `experiences[${index}][startDate]`,
-          exp.startDate ? exp.startDate.toISOString() : ""
-        );
-        formData.append(
-          `experiences[${index}][endDate]`,
-          exp.endDate ? exp.endDate.toISOString() : ""
-        );
-        formData.append(
-          `experiences[${index}][responsibilities]`,
-          exp.responsibilities
-        );
-      });
-
-      // Append files
-      if (data.resume && data.resume.length > 0) {
-        formData.append("resume", data.resume[0]);
-      }
-      if (data.license && data.license.length > 0) {
-        formData.append("license", data.license[0]);
-      }
-      if (data.certifications && data.certifications.length > 0) {
-        Array.from(data.certifications).forEach((file) => {
-          formData.append("certifications", file);
-        });
-      }
-      if (data.otherDocuments && data.otherDocuments.length > 0) {
-        Array.from(data.otherDocuments).forEach((file) => {
-          formData.append("otherDocuments", file);
-        });
-      }
+      const payload = {
+        ...data,
+        dob: data.dob ? data.dob.toISOString() : null,
+        experiences: data.experiences.map((exp) => ({
+          ...exp,
+          startDate: exp.startDate ? exp.startDate.toISOString() : null,
+          endDate: exp.endDate ? exp.endDate.toISOString() : null,
+        })),
+      };
 
       const response = await fetch("/api/nurse/me", {
         method: "POST",
-        body: formData,
-        // If using JWT stored in cookies, it will be sent automatically.
-        // If stored elsewhere, include it in headers.
-        // headers: {
-        //   "Authorization": `Bearer ${token}`,
-        // },
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
         setSubmitSuccess(true);
-        // Optionally, refetch profile data
       } else {
         const errorData = await response.json();
         console.error("Failed to update profile:", errorData.message);
-        // Optionally, set an error state to display an error message
       }
     } catch (error) {
       console.error("Submission Error:", error);
-      // Optionally, set an error state to display an error message
     } finally {
       stopLoading();
       setIsSubmitting(false);
@@ -312,13 +242,11 @@ const NurseProfilePageComponent: React.FC = () => {
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  // Watch form fields to calculate profile completion dynamically (optional)
   const watchAllFields = watch();
 
   useEffect(() => {
-    // Example logic to calculate profile completion
     let completed = 0;
-    const totalFields = 10; // Adjust based on actual fields
+    const totalFields = 12;
 
     if (watchAllFields.firstName) completed += 1;
     if (watchAllFields.lastName) completed += 1;
@@ -326,22 +254,24 @@ const NurseProfilePageComponent: React.FC = () => {
     if (watchAllFields.gender) completed += 1;
     if (watchAllFields.contactNumber) completed += 1;
     if (watchAllFields.email) completed += 1;
-    if (watchAllFields.address) completed += 1;
-    if (watchAllFields.licenseNumber) completed += 1;
-    if (watchAllFields.licenseExpiration) completed += 1;
-    if (watchAllFields.yearsOfExperience) completed += 1;
+    if (watchAllFields.postalCode) completed += 1;
+    if (watchAllFields.citizenship) completed += 1;
+    if (watchAllFields.race) completed += 1;
+    if (watchAllFields.specialization) completed += 1;
+    if (watchAllFields.availableWorkDays) completed += 1;
+    if (watchAllFields.frequencyOfWork) completed += 1;
 
     setProfileCompletion(Math.min((completed / totalFields) * 100, 100));
   }, [watchAllFields]);
 
+  const memoizedSkillsList = useMemo(() => skillsList, [skillsList]);
+
+  const workDaysOptions = ["Weekdays", "Weekends", "Both"];
+
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <Sidebar
-        isSidebarOpen={isSidebarOpen}
-        toggleSidebar={toggleSidebar}
-        role="nurse"
-      />
+      <Sidebar isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} role="nurse" />
 
       {/* Overlay for mobile sidebar */}
       {isSidebarOpen && (
@@ -372,9 +302,7 @@ const NurseProfilePageComponent: React.FC = () => {
                     className="w-32 h-2 bg-gray-200 rounded-full"
                     trackColor="bg-gray-200"
                   />
-                  <span className="text-sm text-gray-700">
-                    {profileCompletion}% Complete
-                  </span>
+                  <span className="text-sm text-gray-700">{profileCompletion}% Complete</span>
                 </div>
               </div>
             </div>
@@ -389,14 +317,11 @@ const NurseProfilePageComponent: React.FC = () => {
                       <Lightbulb size={40} />
                     </div>
 
-                    {/* Text and Button */}
+                    {/* Text */}
                     <div className="flex-1">
-                      <h2 className="text-lg font-semibold">
-                        Complete Your Profile
-                      </h2>
+                      <h2 className="text-lg font-semibold">Complete Your Profile</h2>
                       <p className="text-sm mt-1">
-                        Completing your profile helps us match you with the best
-                        job opportunities!
+                        Completing your profile helps us match you with the best job opportunities!
                       </p>
                     </div>
                   </CardContent>
@@ -412,7 +337,7 @@ const NurseProfilePageComponent: React.FC = () => {
             )}
 
             {/* Loading State */}
-            {isLoading ? (
+            {isLoading || memoizedSkillsList.length === 0 ? (
               <div className="space-y-6">
                 {/* Skeletons for Personal Information */}
                 <Card className="shadow-md animate-pulse">
@@ -421,16 +346,6 @@ const NurseProfilePageComponent: React.FC = () => {
                     <CardDescription className="h-4 bg-gray-300 rounded w-1/2 mt-2"></CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Profile Picture Skeleton */}
-                    <div className="flex items-center space-x-6">
-                      <div className="w-32 h-32 bg-gray-300 rounded-full"></div>
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-                        <div className="h-4 bg-gray-300 rounded w-1/2"></div>
-                      </div>
-                    </div>
-
-                    {/* Form Fields Skeleton */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div>
                         <div className="h-4 bg-gray-300 rounded w-24 mb-2"></div>
@@ -475,18 +390,6 @@ const NurseProfilePageComponent: React.FC = () => {
                     <div className="h-4 bg-gray-300 rounded w-full mb-2"></div>
                   </CardContent>
                 </Card>
-
-                {/* Skeletons for Documents */}
-                <Card className="shadow-md animate-pulse">
-                  <CardHeader>
-                    <CardTitle className="h-6 bg-gray-300 rounded w-1/3"></CardTitle>
-                    <CardDescription className="h-4 bg-gray-300 rounded w-1/2 mt-2"></CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="h-4 bg-gray-300 rounded w-full mb-2"></div>
-                    <div className="h-4 bg-gray-300 rounded w-full mb-2"></div>
-                  </CardContent>
-                </Card>
               </div>
             ) : (
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -494,50 +397,9 @@ const NurseProfilePageComponent: React.FC = () => {
                 <Card className="shadow-md transition-opacity duration-500 ease-in-out">
                   <CardHeader>
                     <CardTitle>Personal Information</CardTitle>
-                    <CardDescription>
-                      Provide your basic personal details
-                    </CardDescription>
+                    <CardDescription>Provide your basic personal details</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* Profile Picture */}
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-6">
-                      <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
-                        <img
-                          src={initialData?.profilePictureUrl || "/avatar.jpg"}
-                          alt="Profile"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="mt-4 sm:mt-0">
-                        <label htmlFor="profilePicture">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="flex items-center"
-                          >
-                            <Upload className="mr-2 h-4 w-4" /> Upload Picture
-                          </Button>
-                        </label>
-                        {/* Hidden File Input */}
-                        <input
-                          id="profilePicture"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) {
-                              // Preview the selected image
-                              const reader = new FileReader();
-                              reader.onload = (event) => {
-                                // Optionally, handle preview
-                              };
-                              reader.readAsDataURL(e.target.files[0]);
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-
                     {/* Name Fields */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div>
@@ -593,16 +455,16 @@ const NurseProfilePageComponent: React.FC = () => {
                                   )}
                                 >
                                   <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {field.value
-                                    ? format(field.value, "PPP")
-                                    : "Pick a date"}
+                                  {field.value ? format(field.value, "PPP") : "Pick a date"}
                                 </Button>
                               </PopoverTrigger>
                               <PopoverContent className="w-auto p-0">
                                 <Calendar
                                   mode="single"
                                   selected={field.value ?? undefined}
-                                  onSelect={field.onChange}
+                                  onSelect={(date) => {
+                                    field.onChange(date);
+                                  }}
                                   initialFocus
                                 />
                               </PopoverContent>
@@ -623,8 +485,10 @@ const NurseProfilePageComponent: React.FC = () => {
                           rules={{ required: "Gender is required" }}
                           render={({ field }) => (
                             <Select
-                              value={field.value} // Use value instead of defaultValue
-                              onValueChange={(value) => field.onChange(value)}
+                              value={field.value}
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                              }}
                             >
                               <SelectTrigger className="mt-1">
                                 <SelectValue placeholder="Select gender" />
@@ -632,7 +496,6 @@ const NurseProfilePageComponent: React.FC = () => {
                               <SelectContent>
                                 <SelectItem value="Male">Male</SelectItem>
                                 <SelectItem value="Female">Female</SelectItem>
-                                <SelectItem value="Other">Other</SelectItem>
                               </SelectContent>
                             </Select>
                           )}
@@ -651,13 +514,9 @@ const NurseProfilePageComponent: React.FC = () => {
                         <Label htmlFor="contactNumber">Contact Number</Label>
                         <Input
                           id="contactNumber"
-                          placeholder="+1 (555) 123-4567"
+                          placeholder="+65 1234 5678"
                           {...register("contactNumber", {
                             required: "Contact number is required",
-                            // pattern: {
-                            //   value: /^\+?[1-9]\d{1,14}$/,
-                            //   message: "Invalid phone number",
-                            // },
                           })}
                           className="mt-1"
                         />
@@ -675,6 +534,10 @@ const NurseProfilePageComponent: React.FC = () => {
                           placeholder="john.doe@example.com"
                           {...register("email", {
                             required: "Email is required",
+                            pattern: {
+                              value: /^\S+@\S+$/i,
+                              message: "Invalid email address",
+                            },
                           })}
                           readOnly
                           className="mt-1 bg-gray-100 cursor-not-allowed"
@@ -687,16 +550,85 @@ const NurseProfilePageComponent: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Address */}
-                    <div>
-                      <Label htmlFor="address">Address</Label>
-                      <Textarea
-                        id="address"
-                        placeholder="123 Main St, Springfield, USA"
-                        {...register("address")}
-                        className="mt-1"
-                        rows={3}
-                      />
+                    {/* Postal Code, Citizenship, Race */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                      <div>
+                        <Label htmlFor="postalCode">Postal Code</Label>
+                        <Input
+                          id="postalCode"
+                          placeholder="123456"
+                          {...register("postalCode", {
+                            required: "Postal code is required",
+                          })}
+                          className="mt-1"
+                        />
+                        {errors.postalCode && (
+                          <span className="text-red-500 text-sm">
+                            {errors.postalCode.message}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <Label htmlFor="citizenship">Citizenship</Label>
+                        <Controller
+                          control={control}
+                          name="citizenship"
+                          rules={{ required: "Citizenship is required" }}
+                          render={({ field }) => (
+                            <Select
+                              value={field.value}
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                              }}
+                            >
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Select citizenship" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Singaporean">Singaporean</SelectItem>
+                                <SelectItem value="PR">PR (Permanent Resident)</SelectItem>
+                                <SelectItem value="Foreigner">Foreigner</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        {errors.citizenship && (
+                          <span className="text-red-500 text-sm">
+                            {errors.citizenship.message}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <Label htmlFor="race">Race</Label>
+                        <Controller
+                          control={control}
+                          name="race"
+                          rules={{ required: "Race is required" }}
+                          render={({ field }) => (
+                            <Select
+                              value={field.value}
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                              }}
+                            >
+                              <SelectTrigger className="mt-1">
+                                <SelectValue placeholder="Select race" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Chinese">Chinese</SelectItem>
+                                <SelectItem value="Malay">Malay</SelectItem>
+                                <SelectItem value="Indian">Indian</SelectItem>
+                                <SelectItem value="Others">Others</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        {errors.race && (
+                          <span className="text-red-500 text-sm">
+                            {errors.race.message}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -705,181 +637,157 @@ const NurseProfilePageComponent: React.FC = () => {
                 <Card className="shadow-md">
                   <CardHeader>
                     <CardTitle>Professional Information</CardTitle>
-                    <CardDescription>
-                      Provide details about your nursing career
-                    </CardDescription>
+                    <CardDescription>Provide details about your nursing career</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* License Number and Expiration */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <div>
-                        <Label htmlFor="licenseNumber">
-                          Nursing License Number
-                        </Label>
-                        <Input
-                          id="licenseNumber"
-                          placeholder="ABC123456"
-                          {...register("licenseNumber", {
-                            required: "License number is required",
-                          })}
-                          className="mt-1"
-                        />
-                        {errors.licenseNumber && (
-                          <span className="text-red-500 text-sm">
-                            {errors.licenseNumber.message}
-                          </span>
-                        )}
-                      </div>
-                      <div>
-                        <Label htmlFor="licenseExpiration">
-                          License Expiration Date
-                        </Label>
-                        <Controller
-                          control={control}
-                          name="licenseExpiration"
-                          rules={{
-                            required: "License expiration date is required",
-                          }}
-                          render={({ field }) => (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    "w-full justify-start text-left font-normal mt-1",
-                                    !field.value && "text-muted-foreground"
-                                  )}
-                                >
-                                  <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {field.value
-                                    ? format(field.value, "PPP")
-                                    : "Pick a date"}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0">
-                                <Calendar
-                                  mode="single"
-                                  selected={field.value ?? undefined}
-                                  onSelect={field.onChange}
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
-                          )}
-                        />
-                        {errors.licenseExpiration && (
-                          <span className="text-red-500 text-sm">
-                            {errors.licenseExpiration.message}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Years of Experience */}
+                    {/* Specialization */}
                     <div>
-                      <Label htmlFor="yearsOfExperience">
-                        Years of Experience
-                      </Label>
-                      <Input
-                        id="yearsOfExperience"
-                        type="number"
-                        min="0"
-                        placeholder="5"
-                        {...register("yearsOfExperience", {
-                          required: "Years of experience is required",
-                          min: {
-                            value: 0,
-                            message: "Experience cannot be negative",
-                          },
-                        })}
-                        className="mt-1"
+                      <Label htmlFor="specialization">Specialization</Label>
+                      <Controller
+                        control={control}
+                        name="specialization"
+                        rules={{ required: "Specialization is required" }}
+                        render={({ field }) => (
+                          <Select
+                            value={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                            }}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="Select specialization" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="COMMUNITY_HEALTH">Community Health</SelectItem>
+                              <SelectItem value="CRITICAL_CARE">Critical Care</SelectItem>
+                              <SelectItem value="GERONTOLOGY">Gerontology</SelectItem>
+                              <SelectItem value="EMERGENCY">Emergency</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
                       />
-                      {errors.yearsOfExperience && (
+                      {errors.specialization && (
                         <span className="text-red-500 text-sm">
-                          {errors.yearsOfExperience.message}
+                          {errors.specialization.message}
                         </span>
                       )}
                     </div>
 
-                    {/* Education Level */}
+                    {/* Available Work Days */}
                     <div>
-                      <Label htmlFor="education">Highest Education Level</Label>
+                      <Label>Available Work Days</Label>
                       <Controller
                         control={control}
-                        name="education"
-                        rules={{ required: "Education level is required" }}
+                        name="availableWorkDays"
+                        rules={{ required: "Please select at least one work day" }}
                         render={({ field }) => (
                           <Select
-                            value={field.value} // Use value instead of defaultValue
-                            onValueChange={(value) => field.onChange(value)}
+                            value={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                            }}
                           >
                             <SelectTrigger className="mt-1">
-                              <SelectValue placeholder="Select education level" />
+                              <SelectValue placeholder="Select available work days" />
                             </SelectTrigger>
                             <SelectContent>
-                              {[
-                                "Bachelor's Degree in Nursing",
-                                "Master's Degree in Nursing",
-                                "Doctorate in Nursing",
-                                "Associate Degree in Nursing",
-                                "Diploma in Nursing",
-                              ].map((level) => (
-                                <SelectItem key={level} value={level}>
-                                  {level}
+                              {workDaysOptions.map((option) => (
+                                <SelectItem key={option} value={option}>
+                                  {option}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         )}
                       />
-                      {errors.education && (
+                      {errors.availableWorkDays && (
                         <span className="text-red-500 text-sm">
-                          {errors.education.message}
+                          {errors.availableWorkDays.message}
                         </span>
                       )}
                     </div>
 
-                    {/* Specializations */}
+                    {/* Frequency of Work */}
                     <div>
-                      <Label>Specializations</Label>
-                      <Controller
-                        control={control}
-                        name="specializations"
-                        render={({ field }) => (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
-                            {[
-                              "ICU",
-                              "ER",
-                              "Pediatrics",
-                              "Surgical",
-                              "Oncology",
-                              "Geriatrics",
-                            ].map((spec) => (
-                              <div
-                                key={spec}
-                                className="flex items-center space-x-2"
-                              >
-                                <Checkbox
-                                  id={spec}
-                                  checked={field.value?.includes(spec)}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      field.onChange([...field.value, spec]);
-                                    } else {
-                                      field.onChange(
-                                        field.value.filter(
-                                          (item) => item !== spec
-                                        )
-                                      );
-                                    }
-                                  }}
-                                />
-                                <Label htmlFor={spec}>{spec}</Label>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                      <Label htmlFor="frequencyOfWork">Frequency of Work</Label>
+                      <div className="flex items-center mt-1">
+                        <Controller
+                          control={control}
+                          name="frequencyOfWork"
+                          rules={{
+                            required: "Frequency of work is required",
+                            min: {
+                              value: 1,
+                              message: "Must be at least 1 time a week",
+                            },
+                            max: {
+                              value: 7,
+                              message: "Cannot exceed 7 times a week",
+                            },
+                          }}
+                          render={({ field }) => (
+                            <Input
+                              id="frequencyOfWork"
+                              type="number"
+                              placeholder="5"
+                              {...field}
+                              min={1}
+                              max={7}
+                              className="w-20"
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value, 10);
+                                if (!isNaN(value)) {
+                                  field.onChange(value);
+                                } else {
+                                  field.onChange("");
+                                }
+                              }}
+                            />
+                          )}
+                        />
+                        <span className="ml-2 text-gray-700">times a week</span>
+                      </div>
+                      {errors.frequencyOfWork && (
+                        <span className="text-red-500 text-sm">
+                          {errors.frequencyOfWork.message}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Preferred Facility Type */}
+                    <div>
+                      <Label htmlFor="preferredFacilityType">Preferred Facility Type</Label>
+                      <Input
+                        id="preferredFacilityType"
+                        placeholder="ICU"
+                        {...register("preferredFacilityType", {
+                          required: "Preferred facility type is required",
+                        })}
+                        className="mt-1"
                       />
+                      {errors.preferredFacilityType && (
+                        <span className="text-red-500 text-sm">
+                          {errors.preferredFacilityType.message}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Available Work Timing */}
+                    <div>
+                      <Label htmlFor="availableWorkTiming">Available Work Timing</Label>
+                      <Input
+                        id="availableWorkTiming"
+                        placeholder="No Preference"
+                        {...register("availableWorkTiming", {
+                          required: "Available work timing is required",
+                        })}
+                        className="mt-1"
+                      />
+                      {errors.availableWorkTiming && (
+                        <span className="text-red-500 text-sm">
+                          {errors.availableWorkTiming.message}
+                        </span>
+                      )}
                     </div>
 
                     {/* Skills */}
@@ -888,113 +796,35 @@ const NurseProfilePageComponent: React.FC = () => {
                       <Controller
                         control={control}
                         name="skills"
+                        rules={{
+                          required: "Please select at least one skill",
+                        }}
                         render={({ field }) => (
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
-                            {skillsList.map((skill) => (
-                              <div
-                                key={skill}
-                                className="flex items-center space-x-2"
-                              >
+                            {memoizedSkillsList.map((skill) => (
+                              <div key={skill.id} className="flex items-center space-x-2">
                                 <Checkbox
-                                  id={skill}
-                                  checked={field.value?.includes(skill)}
+                                  id={`skill_${skill.id}`}
+                                  checked={field.value.includes(skill.id)}
                                   onCheckedChange={(checked) => {
                                     if (checked) {
-                                      field.onChange([...field.value, skill]);
+                                      field.onChange([...field.value, skill.id]);
                                     } else {
-                                      field.onChange(
-                                        field.value.filter(
-                                          (item) => item !== skill
-                                        )
-                                      );
+                                      field.onChange(field.value.filter((id) => id !== skill.id));
                                     }
                                   }}
                                 />
-                                <Label htmlFor={skill}>{skill}</Label>
+                                <Label htmlFor={`skill_${skill.id}`}>{skill.name}</Label>
                               </div>
                             ))}
                           </div>
                         )}
                       />
-                    </div>
-
-                    {/* Languages Spoken */}
-                    <div>
-                      <Label>Languages Spoken</Label>
-                      <Controller
-                        control={control}
-                        name="languages"
-                        render={({ field }) => (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
-                            {["English", "Mandarin", "Malay", "Tamil"].map(
-                              (lang) => (
-                                <div
-                                  key={lang}
-                                  className="flex items-center space-x-2"
-                                >
-                                  <Checkbox
-                                    id={lang}
-                                    checked={field.value?.includes(lang)}
-                                    onCheckedChange={(checked) => {
-                                      if (checked) {
-                                        field.onChange([...field.value, lang]);
-                                      } else {
-                                        field.onChange(
-                                          field.value.filter(
-                                            (item) => item !== lang
-                                          )
-                                        );
-                                      }
-                                    }}
-                                  />
-                                  <Label htmlFor={lang}>{lang}</Label>
-                                </div>
-                              )
-                            )}
-                          </div>
-                        )}
-                      />
-                    </div>
-
-                    {/* Shift Preferences */}
-                    <div>
-                      <Label>Shift Preferences</Label>
-                      <Controller
-                        control={control}
-                        name="shiftPreferences"
-                        render={({ field }) => (
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-1">
-                            {[
-                              "Day Shift",
-                              "Night Shift",
-                              "Weekends",
-                              "Overtime",
-                            ].map((shift) => (
-                              <div
-                                key={shift}
-                                className="flex items-center space-x-2"
-                              >
-                                <Checkbox
-                                  id={shift}
-                                  checked={field.value?.includes(shift)}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      field.onChange([...field.value, shift]);
-                                    } else {
-                                      field.onChange(
-                                        field.value.filter(
-                                          (item) => item !== shift
-                                        )
-                                      );
-                                    }
-                                  }}
-                                />
-                                <Label htmlFor={shift}>{shift}</Label>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      />
+                      {errors.skills && (
+                        <span className="text-red-500 text-sm">
+                          {errors.skills.message}
+                        </span>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1003,20 +833,13 @@ const NurseProfilePageComponent: React.FC = () => {
                 <Card className="shadow-md">
                   <CardHeader>
                     <CardTitle>Work Experience</CardTitle>
-                    <CardDescription>
-                      Add your previous work experiences
-                    </CardDescription>
+                    <CardDescription>Add your previous work experiences</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {fields.map((item, index) => (
-                      <div
-                        key={item.id}
-                        className="space-y-4 border p-4 rounded-md"
-                      >
+                      <div key={item.id} className="space-y-4 border p-4 rounded-md">
                         <div className="flex justify-between items-center">
-                          <h3 className="text-lg font-semibold">
-                            Experience {index + 1}
-                          </h3>
+                          <h3 className="text-lg font-semibold">Experience {index + 1}</h3>
                           {fields.length > 1 && (
                             <Button
                               type="button"
@@ -1031,44 +854,29 @@ const NurseProfilePageComponent: React.FC = () => {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                           <div>
-                            <Label
-                              htmlFor={`experiences.${index}.facilityName`}
-                            >
-                              Facility Name
-                            </Label>
+                            <Label htmlFor={`experiences.${index}.facilityName`}>Facility Name</Label>
                             <Input
                               id={`experiences.${index}.facilityName`}
                               placeholder="Hospital ABC"
-                              {...register(
-                                `experiences.${index}.facilityName` as const,
-                                {
-                                  required: "Facility name is required",
-                                }
-                              )}
+                              {...register(`experiences.${index}.facilityName` as const, {
+                                required: "Facility name is required",
+                              })}
                               className="mt-1"
                             />
                             {errors.experiences?.[index]?.facilityName && (
                               <span className="text-red-500 text-sm">
-                                {
-                                  errors.experiences[index].facilityName
-                                    ?.message
-                                }
+                                {errors.experiences[index].facilityName?.message}
                               </span>
                             )}
                           </div>
                           <div>
-                            <Label htmlFor={`experiences.${index}.position`}>
-                              Position/Title
-                            </Label>
+                            <Label htmlFor={`experiences.${index}.position`}>Position/Title</Label>
                             <Input
                               id={`experiences.${index}.position`}
                               placeholder="Registered Nurse"
-                              {...register(
-                                `experiences.${index}.position` as const,
-                                {
-                                  required: "Position is required",
-                                }
-                              )}
+                              {...register(`experiences.${index}.position` as const, {
+                                required: "Position is required",
+                              })}
                               className="mt-1"
                             />
                             {errors.experiences?.[index]?.position && (
@@ -1081,23 +889,17 @@ const NurseProfilePageComponent: React.FC = () => {
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                           <div>
-                            <Label htmlFor={`experiences.${index}.department`}>
-                              Department
-                            </Label>
+                            <Label htmlFor={`experiences.${index}.department`}>Department</Label>
                             <Input
                               id={`experiences.${index}.department`}
                               placeholder="Pediatrics"
-                              {...register(
-                                `experiences.${index}.department` as const
-                              )}
+                              {...register(`experiences.${index}.department` as const)}
                               className="mt-1"
                             />
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <Label htmlFor={`experiences.${index}.startDate`}>
-                                Start Date
-                              </Label>
+                              <Label htmlFor={`experiences.${index}.startDate`}>Start Date</Label>
                               <Controller
                                 control={control}
                                 name={`experiences.${index}.startDate`}
@@ -1109,21 +911,20 @@ const NurseProfilePageComponent: React.FC = () => {
                                         variant="outline"
                                         className={cn(
                                           "w-full justify-start text-left font-normal mt-1",
-                                          !field.value &&
-                                            "text-muted-foreground"
+                                          !field.value && "text-muted-foreground"
                                         )}
                                       >
                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {field.value
-                                          ? format(field.value, "PPP")
-                                          : "Pick a date"}
+                                        {field.value ? format(field.value, "PPP") : "Pick a date"}
                                       </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0">
                                       <Calendar
                                         mode="single"
                                         selected={field.value ?? undefined}
-                                        onSelect={field.onChange}
+                                        onSelect={(date) => {
+                                          field.onChange(date);
+                                        }}
                                         initialFocus
                                       />
                                     </PopoverContent>
@@ -1137,9 +938,7 @@ const NurseProfilePageComponent: React.FC = () => {
                               )}
                             </div>
                             <div>
-                              <Label htmlFor={`experiences.${index}.endDate`}>
-                                End Date
-                              </Label>
+                              <Label htmlFor={`experiences.${index}.endDate`}>End Date</Label>
                               <Controller
                                 control={control}
                                 name={`experiences.${index}.endDate`}
@@ -1151,21 +950,20 @@ const NurseProfilePageComponent: React.FC = () => {
                                         variant="outline"
                                         className={cn(
                                           "w-full justify-start text-left font-normal mt-1",
-                                          !field.value &&
-                                            "text-muted-foreground"
+                                          !field.value && "text-muted-foreground"
                                         )}
                                       >
                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {field.value
-                                          ? format(field.value, "PPP")
-                                          : "Pick a date"}
+                                        {field.value ? format(field.value, "PPP") : "Pick a date"}
                                       </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0">
                                       <Calendar
                                         mode="single"
                                         selected={field.value ?? undefined}
-                                        onSelect={field.onChange}
+                                        onSelect={(date) => {
+                                          field.onChange(date);
+                                        }}
                                         initialFocus
                                       />
                                     </PopoverContent>
@@ -1183,17 +981,13 @@ const NurseProfilePageComponent: React.FC = () => {
 
                         {/* Responsibilities */}
                         <div>
-                          <Label
-                            htmlFor={`experiences.${index}.responsibilities`}
-                          >
+                          <Label htmlFor={`experiences.${index}.responsibilities`}>
                             Responsibilities/Duties
                           </Label>
                           <Textarea
                             id={`experiences.${index}.responsibilities`}
                             placeholder="Describe your responsibilities..."
-                            {...register(
-                              `experiences.${index}.responsibilities` as const
-                            )}
+                            {...register(`experiences.${index}.responsibilities` as const)}
                             className="mt-1"
                             rows={4}
                           />
@@ -1219,83 +1013,6 @@ const NurseProfilePageComponent: React.FC = () => {
                       >
                         Add Another Experience
                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Documents */}
-                <Card className="shadow-md">
-                  <CardHeader>
-                    <CardTitle>Documents</CardTitle>
-                    <CardDescription>
-                      Upload your necessary documents
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    {/* Resume/CV */}
-                    <div>
-                      <Label htmlFor="resume">Resume/CV</Label>
-                      <Input
-                        id="resume"
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        // {...register("resume", {
-                        //   required: "Resume is required",
-                        // })}
-                        className="mt-1"
-                      />
-                      {errors.resume && (
-                        <span className="text-red-500 text-sm">
-                          {errors.resume.message}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Nursing License */}
-                    <div>
-                      <Label htmlFor="license">Nursing License Copy</Label>
-                      <Input
-                        id="license"
-                        type="file"
-                        accept=".pdf,.jpg,.png"
-                        // {...register("license", {
-                        //   required: "License copy is required",
-                        // })}
-                        className="mt-1"
-                      />
-                      {errors.license && (
-                        <span className="text-red-500 text-sm">
-                          {errors.license.message}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Certifications */}
-                    <div>
-                      <Label htmlFor="certifications">Certifications</Label>
-                      <Input
-                        id="certifications"
-                        type="file"
-                        accept=".pdf,.jpg,.png"
-                        multiple
-                        {...register("certifications")}
-                        className="mt-1"
-                      />
-                    </div>
-
-                    {/* Other Documents */}
-                    <div>
-                      <Label htmlFor="otherDocuments">
-                        Other Relevant Documents
-                      </Label>
-                      <Input
-                        id="otherDocuments"
-                        type="file"
-                        accept=".pdf,.jpg,.png"
-                        multiple
-                        {...register("otherDocuments")}
-                        className="mt-1"
-                      />
                     </div>
                   </CardContent>
                 </Card>

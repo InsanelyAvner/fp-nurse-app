@@ -1,7 +1,7 @@
 // components/ViewApplicantsPageComponent.tsx
 "use client";
 
-import React, { useState, useEffect, useMemo, useContext } from "react";
+import React, { useState, useEffect, useMemo, useContext, useCallback } from "react";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 import { Button } from "@/components/ui/button";
@@ -223,8 +223,6 @@ const ApplicantRow: React.FC<{
   </TableRow>
 );
 
-// Applicant Card for Mobile View (unchanged)
-
 // Main Component
 const ViewApplicantsPageComponent: React.FC = () => {
   const userRole: "admin" | "nurse" = "admin"; // Assume admin role for this page
@@ -332,17 +330,20 @@ const ViewApplicantsPageComponent: React.FC = () => {
   }, [applicants, searchQuery, sortOption, sortOrder]);
 
   // Handlers for opening confirmation dialog
-  const openConfirmDialog = (
-    applicant: Applicant,
-    type: "accept" | "reject"
-  ) => {
-    setSelectedApplicant(applicant);
-    setActionType(type);
-    setIsConfirmOpen(true);
-  };
+  const openConfirmDialog = useCallback(
+    (
+      applicant: Applicant,
+      type: "accept" | "reject"
+    ) => {
+      setSelectedApplicant(applicant);
+      setActionType(type);
+      setIsConfirmOpen(true);
+    },
+    []
+  );
 
   // Handlers for accepting/rejecting applicants
-  const handleConfirmAction = async () => {
+  const handleConfirmAction = useCallback(async () => {
     if (selectedApplicant && actionType) {
       startLoading(); // Start loading for action
       try {
@@ -364,7 +365,7 @@ const ViewApplicantsPageComponent: React.FC = () => {
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.message || "Action failed.");
+          throw new Error(errorData.error || "Action failed.");
         }
 
         // Update the applicants list locally
@@ -374,9 +375,7 @@ const ViewApplicantsPageComponent: React.FC = () => {
 
         // Show success toast
         toast.success(
-          `${actionType === "accept" ? "Accepted" : "Rejected"} ${
-            selectedApplicant.name
-          }`
+          `Application ${actionType === "accept" ? "accepted" : "rejected"} successfully.`
         );
 
         // Reset dialog state
@@ -390,18 +389,25 @@ const ViewApplicantsPageComponent: React.FC = () => {
         stopLoading(); // Stop loading for action
       }
     }
-  };
+  }, [selectedApplicant, actionType, startLoading, stopLoading, params]);
 
-  const handleCancelAction = () => {
+  const handleCancelAction = useCallback(() => {
     setIsConfirmOpen(false);
     setActionType(null);
     setSelectedApplicant(null);
-  };
+  }, []);
 
-  const handleViewProfile = (applicantId: number) => {
+  const handleViewProfile = useCallback((applicantId: number) => {
     // Navigate to applicant's full profile or open a modal
     router.push(`/admin/nurses/${applicantId}`);
-  };
+  }, [router]);
+
+  // Handler for Delete (Optional: Implement actual delete logic)
+  const handleDelete = useCallback((nurseId: string) => {
+    // Implement delete logic here, e.g., confirmation modal, API call, etc.
+    // For now, just show a toast
+    toast.info(`Delete functionality for nurse ID ${nurseId} is not implemented yet.`);
+  }, []);
 
   return (
     <div className="flex h-screen bg-gray-50 relative">
@@ -500,7 +506,7 @@ const ViewApplicantsPageComponent: React.FC = () => {
             {/* Applicants Table for Desktop */}
             <div className="hidden sm:block">
               <div className="overflow-x-auto">
-                <div className="max-w-5xl mx-auto overflow-hidden shadow rounded-lg">
+                <div className="overflow-hidden shadow rounded-lg">
                   <Table className="w-full divide-y divide-gray-200">
                     <TableHeader>
                       <TableRow>

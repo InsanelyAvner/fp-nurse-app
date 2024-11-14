@@ -1,127 +1,226 @@
 // prisma/seed.ts
 
-import { PrismaClient, Role, JobStatus, ApplicationStatus, DocumentType } from '@prisma/client';
-import { faker } from '@faker-js/faker';
+import { PrismaClient, Role, Specialization, JobStatus, ApplicationStatus } from '@prisma/client';
+import { createReadStream } from 'fs';
+import { parse } from 'csv-parse';
 import bcrypt from 'bcryptjs';
+import { faker } from '@faker-js/faker';
 
 const prisma = new PrismaClient();
 
+// Define the specialization to technical skills mapping
+const specializationSkillsMap: { [key in Specialization]: string[] } = {
+  [Specialization.EMERGENCY]: [
+    'Emergency Protocols',
+    'Advanced Cardiac Life Support (ACLS)',
+    'Intravenous (IV) Insertion',
+    'Patient Monitoring',
+    'ECG Interpretation',
+  ],
+  [Specialization.CRITICAL_CARE]: [
+    'Ventilator Management',
+    'Medication Administration',
+    'Patient Monitoring',
+    'Catheterization',
+    'Electronic Medical Records (EMR) Management',
+  ],
+  [Specialization.GERONTOLOGY]: [
+    'Geriatric Care Techniques',
+    'Wound Dressing',
+    'Medication Administration',
+    'Patient Monitoring',
+    'Sterile Technique',
+  ],
+  [Specialization.COMMUNITY_HEALTH]: [
+    'Patient Monitoring',
+    'Medication Administration',
+    'Wound Dressing',
+    'Phlebotomy',
+    'Electronic Medical Records (EMR) Management',
+  ],
+};
+
+/**
+ * Selects a random subset of skills from the provided list.
+ * @param skills - Array of skill names to choose from.
+ * @param min - Minimum number of skills to assign.
+ * @param max - Maximum number of skills to assign.
+ * @returns Array of randomly selected skill names.
+ */
+function getRandomSkills(skills: string[], min: number, max: number): string[] {
+  const numberOfSkills = faker.number.int({ min, max });
+  return faker.helpers.arrayElements(skills, numberOfSkills);
+}
+
+function getRandomApplicationStatus(): ApplicationStatus {
+  const statuses: ApplicationStatus[] = [
+    ApplicationStatus.APPLIED,
+    ApplicationStatus.ACCEPTED,
+    ApplicationStatus.REJECTED,
+  ];
+  return faker.helpers.arrayElement(statuses);
+}
+
+
 async function main() {
-  // 1. Clear Existing Data (Optional)
-  // Uncomment the lines below if you want to reset your database before seeding
-  /*
+  // 1. Clear Existing Data
   await prisma.notification.deleteMany();
   await prisma.shift.deleteMany();
   await prisma.application.deleteMany();
-  await prisma.document.deleteMany();
   await prisma.experience.deleteMany();
   await prisma.job.deleteMany();
-  await prisma.skill.deleteMany();
   await prisma.user.deleteMany();
-  */
+  await prisma.skill.deleteMany(); // Clear skills
 
-  // 2. Create Skills
+  // 2. Create Admin User
+  const adminPassword = await bcrypt.hash('Admin@123', 10); // Secure password
+
+  const adminUser = await prisma.user.create({
+    data: {
+      firstName: 'Admin',
+      lastName: 'User',
+      email: 'admin@freelancenurse.com',
+      password: adminPassword,
+      role: Role.ADMIN,
+      contactNumber: faker.phone.number({style:"international"}), // Singaporean phone number format
+      gender: 'Male',
+      postalCode: '123456',
+      citizenship: 'Singaporean',
+      race: 'Chinese',
+      specialization: Specialization.EMERGENCY,
+      availableWorkDays: 'Weekdays',
+      frequencyOfWork: 7,
+      preferredFacilityType: 'ICU',
+      availableWorkTiming: 'No Preference',
+      dob: faker.date.birthdate({ min: 30, max: 50, mode: 'age' }),
+    },
+  });
+
+  console.log(`Created admin user: ${adminUser.email}`);
+
+  // 3. Create Skills
   const skillNames = [
-    'ICU Experience',
-    'Pediatric Care',
-    'Emergency Response',
-    'Phlebotomy',
-    'Medication Administration',
-    'Patient Assessment',
-    'Wound Care',
     'IV Therapy',
-    'Electronic Medical Records (EMR)',
-    'Geriatric Care',
-    'Neonatal Care',
-    'Surgical Assistance',
-    'Cardiac Care',
-    'Oncology Nursing',
-    'Mental Health Nursing',
+    'Ventilator Management',
+    'Wound Dressing',
+    'Pediatric Life Support',
+    'Geriatric Care Techniques',
+    'Emergency Protocols',
+    'Medication Administration',
+    'Patient Monitoring',
+    'Electronic Medical Records (EMR) Management',
+    'Phlebotomy',
+    'ECG Interpretation',
+    'Catheterization',
+    'Advanced Cardiac Life Support (ACLS)',
+    'Basic Life Support (BLS)',
+    'Intravenous (IV) Insertion',
+    'Sterile Technique',
   ];
 
   const skills = await Promise.all(
     skillNames.map((name) =>
-      prisma.skill.upsert({
-        where: { name },
-        update: {},
-        create: { name },
+      prisma.skill.create({
+        data: { name },
       })
     )
   );
 
   console.log(`Created ${skills.length} skills.`);
 
-  // 3. Create Admin User
-  const adminPassword = await bcrypt.hash('Admin@123', 10); // Secure password
+  // 4. Read and Parse CSV Data
+  const usersMap = new Map<string, any>(); // Map to store unique users
+  const shiftsData: any[] = []; // Array to store shift data
 
-  const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@freelancenurse.com' },
-    update: {},
-    create: {
-      firstName: 'Admin',
-      lastName: 'User',
-      email: 'admin@freelancenurse.com',
-      password: adminPassword,
-      role: Role.ADMIN,
-      bio: 'Administrator with full access to the platform.',
-      yearsOfExperience: 20,
-      certifications: ['BLS', 'ACLS', 'CALS'],
-      specializations: ['Emergency Response', 'Team Collaboration'],
-      languages: ['English', 'Spanish'],
-      shiftPreferences: ['Day Shift', 'Night Shift'],
-      profilePictureUrl: faker.image.avatar(),
-      skills: {
-        connect: skills.map((skill) => ({ id: skill.id })),
-      },
-      address: faker.location.streetAddress(),
-      contactNumber: faker.phone.number({ style: 'international' }),
-      gender: faker.helpers.arrayElement(['Male', 'Female']),
-      dob: faker.date.birthdate({ min: 1950, max: 1980, mode: 'year' }),
-      licenseNumber: faker.string.alphanumeric(10).toUpperCase(),
-      licenseExpiration: faker.date.future({ years: 5 }),
-      education: "Doctorate",
-    },
+  await new Promise<void>((resolve, reject) => {
+    const parser = parse({
+      columns: true,
+      skip_empty_lines: true,
+      relax_column_count: true,
+      trim: true,
+    });
+
+    createReadStream('data.csv')
+      .pipe(parser)
+      .on('data', (row: any) => {
+        const uniqueIdRaw = row['Name (as per NRIC) - Replace with a unique identifier'].trim();
+        const uniqueId = uniqueIdRaw.toLowerCase(); // Normalize to lowercase
+
+        if (!usersMap.has(uniqueId)) {
+          // Split the name into firstName and lastName
+          const nameParts = uniqueIdRaw.split(' ');
+          const firstName = nameParts[0];
+          const lastName = nameParts.slice(1).join(' ') || '';
+
+          usersMap.set(uniqueId, {
+            firstName,
+            lastName,
+            citizenship: row['Singaporean/ Singapore PR'].trim() || 'Singaporean',
+            race: row['Race'].trim(),
+            gender: row['Gender'].trim(),
+            specialization: row['Specialisation'].trim(),
+            postalCode: row['Postal Code'].trim(),
+            availableWorkDays: row['Available work days'].trim(),
+            frequencyOfWork: row['Frequency of work'].trim(),
+            preferredFacilityType: row['Inpatient Ward(IPS)/ Intensive Care (ICU)'].trim(),
+            availableWorkTiming: row['Available work timing'].trim(),
+            dob: faker.date.birthdate({ min: 22, max: 65, mode: 'age' }),
+            // Removed skills from CSV parsing
+          });
+        }
+
+        // Collect shift data
+        shiftsData.push({
+          uniqueId, // Already normalized to lowercase
+          startDate: row['Start Date'].trim(),
+          endDate: row['End Date'].trim(),
+          startTime: row['Start Time'].trim(),
+          endTime: row['End Time'].trim(),
+          mealBreak: row['Meal Break'].trim().toLowerCase() === 'yes',
+          assignedDepartment: row['Assigned Department'].trim(),
+          assignedSupervisor: row['Assigned Supervisor'].trim(),
+          supervisorRating: parseInt(row["Supervisor's rating on Locum Performance"].trim(), 10),
+          commentsOnPerformance: row['Comments on Locum Performance'].trim(),
+          recommendToRehire: row['Recommend to Rehire (Yes/No)'].trim().toLowerCase() === 'yes',
+        });
+      })
+      .on('end', () => {
+        resolve();
+      })
+      .on('error', (err: any) => {
+        console.error('Error reading CSV file:', err);
+        reject(err);
+      });
   });
 
-  console.log(`Created admin user: ${adminUser.email}`);
+  console.log(`Parsed CSV data: ${usersMap.size} unique users found.`);
 
-  // 4. Create Nurse Users
-  const nurseUsers: any[] = []; // Using any[] temporarily to handle TypeScript typing issues
+  // 5. Create Users and Experiences
+  const userEntries = Array.from(usersMap.entries());
 
-  for (let i = 0; i < 50; i++) { // Increased number for a robust dataset
-    const userPassword = await bcrypt.hash('Nurse@123', 10); // Secure password
+  for (const [uniqueId, userData] of userEntries) {
+    const password = await bcrypt.hash('Nurse@123', 10); // Default password
+    const email = faker.internet
+      .email({
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        provider: 'freelancenurse.com',
+      })
+      .toLowerCase(); // Normalize email to lowercase
 
-    const firstName = faker.person.firstName();
-    const lastName = faker.person.lastName();
-    const gender = faker.helpers.arrayElement(['Male', 'Female']);
-    const dob = faker.date.birthdate({ min: 1965, max: 2000, mode: 'year' });
-    const contactNumber = faker.phone.number({ style: 'international' });
-    const email = faker.internet.email({ firstName, lastName, provider: 'freelancenurse.com' });
-    const address = faker.location.streetAddress();
-    const licenseNumber = faker.string.alphanumeric(12).toUpperCase();
-    const licenseExpiration = faker.date.future({ years: 5 });
-    const yearsOfExperience = faker.number.int({ min: 1, max: 35 });
-    const education = faker.helpers.arrayElement([
-      "Bachelor's Degree in Nursing",
-      "Master's Degree in Nursing",
-      'Doctorate in Nursing',
-      'Associate Degree in Nursing',
-      'Diploma in Nursing',
-    ]);
-    const specializations = faker.helpers.arrayElements(
-      ['ICU', 'Emergency', 'Pediatrics', 'Surgical', 'Oncology', 'Geriatrics', 'Neonatal', 'Cardiology', 'Neurology'],
-      faker.number.int({ min: 1, max: 4 })
-    );
-    const languages = faker.helpers.arrayElements(
-      ['English', 'Mandarin', 'Malay', 'Tamil', 'Spanish', 'French', 'Arabic', 'Hindi'],
-      faker.number.int({ min: 1, max: 3 })
-    );
-    const shiftPreferences = faker.helpers.arrayElements(
-      ['Day Shift', 'Night Shift', 'Weekends', 'Overtime', 'Flexible Hours'],
-      faker.number.int({ min: 1, max: 3 })
-    );
-    const bio = faker.lorem.paragraph();
-    const profilePictureUrl = faker.image.avatar();
+    // Map specialization string to enum
+    const specializationMap: { [key: string]: Specialization } = {
+      'community health': Specialization.COMMUNITY_HEALTH,
+      'critical care': Specialization.CRITICAL_CARE,
+      'gerontology': Specialization.GERONTOLOGY,
+      'emergency': Specialization.EMERGENCY,
+      'intensive care': Specialization.CRITICAL_CARE,
+      'neonatal icu': Specialization.CRITICAL_CARE,
+      // Add more mappings as per your CSV data
+    };
+
+    const specializationEnum =
+      specializationMap[userData.specialization.toLowerCase()] || Specialization.COMMUNITY_HEALTH;
 
     // Ensure unique email
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -130,291 +229,293 @@ async function main() {
       continue;
     }
 
-    const user = await prisma.user.create({
-      data: {
-        firstName,
-        lastName,
-        email,
-        password: userPassword,
-        role: Role.USER,
-        bio,
-        yearsOfExperience,
-        certifications: faker.helpers.arrayElements(['BLS', 'ACLS', 'PALS', 'NCC', 'CCRN'], {
-          min: 1,
-          max: 4,
-        }),
-        specializations,
-        languages,
-        shiftPreferences,
-        profilePictureUrl,
-        address,
-        contactNumber,
-        gender,
-        dob,
-        licenseNumber,
-        licenseExpiration,
-        education,
-        skills: {
-          connect: faker.helpers.arrayElements(
-            skills,
-            faker.number.int({ min: 5, max: 10 })
-          ).map((skill) => ({ id: skill.id })),
+    try {
+      // Assign skills based on specialization
+      const possibleSkills = specializationSkillsMap[specializationEnum];
+      const assignedSkills = getRandomSkills(possibleSkills, 3, 5); // Assign between 3 to 5 skills
+
+      const user = await prisma.user.create({
+        data: {
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email,
+          password,
+          role: Role.USER,
+          contactNumber:
+            userData.citizenship === 'Singaporean/ Singapore PR'
+              ? faker.phone.number({style:"international"}) // Singaporean mobile number starts with '8' or '9'
+              : faker.phone.number({style:"international"}), // Adjust as necessary
+          gender: userData.gender,
+          postalCode: userData.postalCode,
+          citizenship: userData.citizenship,
+          race: userData.race,
+          specialization: specializationEnum,
+          availableWorkDays: userData.availableWorkDays,
+          frequencyOfWork: faker.number.int({ min: 2, max: 6 }),
+          preferredFacilityType: userData.preferredFacilityType,
+          availableWorkTiming: userData.availableWorkTiming,
+          dob: userData.dob,
+          skills: {
+            connect: assignedSkills.map((skillName: string) => ({
+              name: skillName,
+            })),
+          },
         },
-      },
-      include: {
-        skills: true, // Include skills in the response
-      },
-    });
+      });
 
-    nurseUsers.push(user);
-  }
-
-  console.log(`Created ${nurseUsers.length} nurse users.`);
-
-  // 5. Create Experiences for Nurse Users
-  const departments = ['Intensive Care Unit (ICU)', 'Emergency Room (ER)', 'Pediatrics', 'Surgery', 'Oncology', 'Geriatrics', 'Neonatal Intensive Care (NICU)', 'Cardiology', 'Neurology'];
-  const positions = ['Registered Nurse', 'Senior Nurse', 'Charge Nurse', 'Clinical Nurse Specialist', 'Nurse Practitioner', 'Travel Nurse', 'Per Diem Nurse'];
-
-  const experiencePromises = nurseUsers.map(async (nurse) => {
-    const numExperiences = faker.number.int({ min: 1, max: 5 }); // Increased number for more detailed profiles
-
-    for (let i = 0; i < numExperiences; i++) {
-      const startDate = faker.date.past({ years: 10 });
-      const endDate = faker.helpers.arrayElement([faker.date.between({ from: startDate, to: new Date() }), null]); // null indicates current position
-
+      // Create Experience (assuming one experience per user from CSV)
       await prisma.experience.create({
         data: {
-          user: { connect: { id: nurse.id } },
+          userId: user.id,
           facilityName: faker.company.name() + ' Hospital',
-          position: faker.helpers.arrayElement(positions),
-          department: faker.helpers.arrayElement(departments),
+          position: 'Registered Nurse',
+          department: userData.preferredFacilityType,
+          startDate: faker.date.past({ years: 5 }),
+          endDate: faker.date.recent({ days: 30 }),
+          responsibilities: faker.lorem.paragraph(),
+        },
+      });
+
+      console.log(`Created user: ${user.email}`);
+
+      // Update the map with user ID for shift creation
+      usersMap.set(uniqueId, { ...userData, id: user.id });
+    } catch (error) {
+      console.error(`Error creating user ${email}:`, error);
+    }
+  }
+
+  console.log(`Created ${usersMap.size} users.`);
+
+  // 6. Create Shifts with Feedback
+  for (const shift of shiftsData) {
+    const user = usersMap.get(shift.uniqueId);
+    if (!user || !user.id) {
+      console.error(`User with uniqueId "${shift.uniqueId}" not found. Skipping shift creation.`);
+      continue;
+    }
+
+    // Parse dates. Assuming Start Date and End Date are in 'DD-MMM' format, e.g., '17-Jul'
+    // We'll set the year to 2025 to ensure all shifts are in 2025
+
+    const parseDate = (dateStr: string): Date => {
+      // Handle cases where year might already be present
+      const regex = /^(\d{1,2})-(\w{3})(?:-(\d{4}))?$/;
+      const match = dateStr.match(regex);
+      if (match) {
+        const day = match[1];
+        const month = match[2];
+        const year = 2025; // **Set year to 2025 regardless of input**
+        return new Date(`${month} ${day}, ${year}`); // e.g., "Jul 17, 2025"
+      }
+      // Fallback to January 1, 2025 if parsing fails
+      console.warn(`Failed to parse date string "${dateStr}". Using 2025-01-01.`);
+      return new Date('2025-01-01');
+    };
+
+    const startDate = parseDate(shift.startDate);
+    const endDate = parseDate(shift.endDate);
+
+    try {
+      await prisma.shift.create({
+        data: {
+          userId: user.id,
+          facility: faker.company.name() + ' Hospital',
           startDate,
           endDate,
-          responsibilities: faker.lorem.paragraphs(2),
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+          mealBreak: shift.mealBreak,
+          assignedDepartment: shift.assignedDepartment,
+          assignedSupervisor: shift.assignedSupervisor,
+          supervisorRating: shift.supervisorRating,
+          commentsOnPerformance: shift.commentsOnPerformance,
+          recommendToRehire: shift.recommendToRehire,
         },
       });
+
+      console.log(`Created shift for userId ${user.id}`);
+    } catch (error) {
+      console.error(`Error creating shift for userId ${user.id}:`, error);
     }
-  });
+  }
 
-  await Promise.all(experiencePromises);
-  console.log(`Created work experiences for nurse users.`);
+  console.log(`Created ${shiftsData.length} shifts with feedback.`);
 
-  // 6. Create Documents for Nurse Users
-  const documentPromises = nurseUsers.map(async (nurse) => {
-    // Resume
-    await prisma.document.create({
-      data: {
-        user: { connect: { id: nurse.id } },
-        type: DocumentType.RESUME,
-        fileUrl: faker.internet.url(), // Replace with actual file URLs or paths as needed
-      },
-    });
+  // 7. Create Sample Job Postings
+  const jobTitles = [
+    'ICU Nurse',
+    'Emergency Room Nurse',
+    'Community Health Nurse',
+    'Geriatric Nurse',
+  ];
 
-    // Nursing License
-    await prisma.document.create({
-      data: {
-        user: { connect: { id: nurse.id } },
-        type: DocumentType.LICENSE,
-        fileUrl: faker.internet.url(),
-      },
-    });
-
-    // Certifications
-    const certifications = nurse.certifications;
-    for (const cert of certifications) {
-      await prisma.document.create({
-        data: {
-          user: { connect: { id: nurse.id } },
-          type: DocumentType.CERTIFICATION,
-          fileUrl: faker.internet.url(),
-        },
-      });
-    }
-
-    // Other Documents (optional)
-    if (faker.datatype.boolean()) { // 50% chance to add other documents
-      const numOtherDocs = faker.number.int({ min: 1, max: 3 });
-      for (let i = 0; i < numOtherDocs; i++) {
-        await prisma.document.create({
-          data: {
-            user: { connect: { id: nurse.id } },
-            type: DocumentType.OTHER,
-            fileUrl: faker.internet.url(),
-          },
-        });
-      }
-    }
-  });
-
-  await Promise.all(documentPromises);
-  console.log(`Created documents for nurse users.`);
-
-  // 7. Create Job Postings
-  const jobDepartments = ['Intensive Care Unit (ICU)', 'Emergency Room (ER)', 'Pediatrics', 'Surgery', 'Oncology', 'Geriatrics', 'Neonatal Intensive Care (NICU)', 'Cardiology', 'Neurology'];
+  const jobDepartments = ['ICU', 'ER', 'Community Health', 'Geriatrics'];
   const jobShiftTypes = ['Day', 'Night', 'Swing'];
 
   const facilities = [
-    'Farrer Park Hospital'
+    'Farrer Park Hospital',
+    'Tan Tock Seng Hospital',
+    'Singapore General Hospital',
+    'Mount Elizabeth Hospital',
   ];
 
-  const jobs = await prisma.job.findMany({
-    include: {
-      requiredSkills: true,
-    },
-  });
+  // Define required technical skills per job title
+  const jobRequiredSkillsMap: { [key: string]: string[] } = {
+    'ICU Nurse': ['Ventilator Management', 'IV Therapy', 'Patient Monitoring'],
+    'Emergency Room Nurse': ['Emergency Protocols', 'Advanced Cardiac Life Support (ACLS)', 'ECG Interpretation'],
+    'Community Health Nurse': ['Patient Monitoring', 'Medication Administration', 'Phlebotomy'],
+    'Geriatric Nurse': ['Geriatric Care Techniques', 'Wound Dressing', 'Medication Administration'],
+  };
 
-  for (let i = 0; i < 30; i++) { // Increased number for a richer dataset
-    const startDate = faker.date.future({ years: 1 });
-    const endDate = faker.date.future({ years: 1, refDate: startDate });
+  for (let i = 0; i < 10; i++) {
+    const title = faker.helpers.arrayElement(jobTitles);
+    const requiredSkills = jobRequiredSkillsMap[title] || [];
 
-    const requiredSkillCount = faker.number.int({ min: 3, max: 7 });
-    const requiredSkills = faker.helpers.arrayElements(skills, requiredSkillCount);
-
-    const jobTitleOptions = [
-      'ICU Nurse',
-      'Pediatric Nurse',
-      'Emergency Room Nurse',
-      'Surgical Nurse',
-      'Oncology Nurse',
-      'Geriatric Nurse',
-      'Neonatal ICU Nurse',
-      'Cardiology Nurse',
-      'Neurology Nurse',
-      'Clinical Nurse Specialist',
-      'Nurse Practitioner - Primary Care',
-      'Registered Nurse - Telehealth',
-      'Labor and Delivery Nurse',
-      'Trauma Nurse',
-      'Mental Health Nurse',
-      'Home Health Nurse',
-      'Infection Control Nurse',
-      'Case Management Nurse',
-      'Rehabilitation Nurse',
-      'Public Health Nurse',
-    ];
-
-    const job = await prisma.job.create({
-      data: {
-        title: faker.helpers.arrayElement(jobTitleOptions),
-        description: faker.lorem.paragraphs(3),
-        facility: faker.helpers.arrayElement(facilities),
-        department: faker.helpers.arrayElement(jobDepartments),
-        shiftType: faker.helpers.arrayElement(jobShiftTypes),
-        startDateTime: startDate,
-        endDateTime: endDate,
-        payRate: `$${faker.number.int({ min: 30, max: 80 })}/hr`,
-        urgent: faker.datatype.boolean(),
-        status: faker.helpers.arrayElement(Object.values(JobStatus)),
-        requiredSkills: {
-          connect: requiredSkills.map((skill) => ({ id: skill.id })),
-        },
-      },
-    });
-
-    jobs.push({ ...job, requiredSkills });
-  }
-
-  console.log(`Created ${jobs.length} job postings.`);
-
-  // 8. Create Applications
-  const applicationPromises = jobs.map(async (job) => {
-    // Each job gets applications from 5 to 15 random nurses
-    const numApplicants = faker.number.int({ min: 5, max: 15 });
-    const applicants = faker.helpers.arrayElements(nurseUsers, numApplicants);
-
-    const applicationCreationPromises = applicants.map(async (nurse) => {
-      // Calculate a random matching score based on overlapping skills
-      const jobSkills: number[] = job.requiredSkills.map((skill: { id: number }) => skill.id);
-      const nurseSkills: number[] = nurse.skills.map((skill: { id: number }) => skill.id);
-      const matchingSkills = jobSkills.filter((skillId) => nurseSkills.includes(skillId));
-      const matchingScore = Math.min((matchingSkills.length / jobSkills.length) * 100, 100);
-
-      // Ensure that a nurse does not apply to the same job multiple times
-      const existingApplication = await prisma.application.findUnique({
-        where: {
-          userId_jobId: {
-            userId: nurse.id,
-            jobId: job.id,
+    try {
+      const job = await prisma.job.create({
+        data: {
+          title,
+          description: faker.lorem.paragraphs(2),
+          facility: faker.helpers.arrayElement(facilities),
+          department: faker.helpers.arrayElement(jobDepartments),
+          shiftType: faker.helpers.arrayElement(jobShiftTypes),
+          startDateTime: faker.date.future({ years: 1 }),
+          endDateTime: faker.date.future({ years: 1, refDate: new Date() }),
+          payRate: `$${faker.number.int({ min: 30, max: 80 })}/hr`,
+          urgent: faker.datatype.boolean(),
+          status: JobStatus.ACTIVE,
+          requiredSkills: {
+            connect: requiredSkills.map((skillName) => ({
+              name: skillName,
+            })),
           },
         },
       });
 
-      if (!existingApplication) {
-        await prisma.application.create({
-          data: {
-            user: { connect: { id: nurse.id } },
-            job: { connect: { id: job.id } },
-            status: faker.helpers.arrayElement(Object.values(ApplicationStatus)),
-            matchingScore: Math.round(matchingScore),
+      console.log(`Created job: ${job.title} at ${job.facility}`);
+    } catch (error) {
+      console.error(`Error creating job "${title}":`, error);
+    }
+  }
+
+  console.log('Created sample job postings.');
+
+  // 8. Create Applications
+  // Randomly assign users to jobs
+  const allJobs = await prisma.job.findMany();
+  const allUsers = Array.from(usersMap.values());
+
+  let hasAccepted = false; // Flag to track if an ACCEPTED status has been assigned
+  const createdApplications: { userId: number; jobId: number }[] = []; // To store created applications for potential update
+
+  for (const job of allJobs) {
+    const numApplicants = faker.number.int({ min: 1, max: 5 });
+    const applicants = faker.helpers.arrayElements(allUsers, numApplicants);
+
+    for (const applicant of applicants) {
+      try {
+        // Check if application already exists
+        const existingApplication = await prisma.application.findFirst({
+          where: {
+            userId: applicant.id,
+            jobId: job.id,
           },
         });
+
+        if (!existingApplication) {
+          // Calculate a matching score based on specialization
+          let matchingScore = 50;
+          switch (applicant.specialization) {
+            case Specialization.EMERGENCY:
+              matchingScore = 80;
+              break;
+            case Specialization.CRITICAL_CARE:
+              matchingScore = 85;
+              break;
+            case Specialization.GERONTOLOGY:
+              matchingScore = 75;
+              break;
+            case Specialization.COMMUNITY_HEALTH:
+              matchingScore = 70;
+              break;
+            default:
+              matchingScore = 60;
+          }
+
+          // Assign status
+          let status: ApplicationStatus = getRandomApplicationStatus();
+          if (status === ApplicationStatus.ACCEPTED) {
+            hasAccepted = true;
+          }
+
+          const application = await prisma.application.create({
+            data: {
+              userId: applicant.id,
+              jobId: job.id,
+              status,
+              matchingScore,
+            },
+          });
+
+          console.log(`Created application for userId ${applicant.id} to jobId ${job.id} with status ${status}`);
+
+          // Store the application details
+          createdApplications.push({ userId: applicant.id, jobId: job.id });
+        }
+      } catch (error) {
+        console.error(`Error creating application for userId ${applicant.id} to jobId ${job.id}:`, error);
       }
-    });
+    }
+  }
 
-    await Promise.all(applicationCreationPromises);
-  });
+  // After creating all applications, ensure at least one is ACCEPTED
+  if (!hasAccepted && createdApplications.length > 0) {
+    // Select a random application to update to ACCEPTED
+    const randomIndex = faker.number.int({ min: 0, max: createdApplications.length - 1 });
+    const { userId, jobId } = createdApplications[randomIndex];
 
-  await Promise.all(applicationPromises);
-  console.log(`Created applications for jobs.`);
+    try {
+      await prisma.application.updateMany({
+        where: {
+          userId,
+          jobId,
+        },
+        data: {
+          status: ApplicationStatus.ACCEPTED,
+        },
+      });
+
+      console.log(`Updated application for userId ${userId} to jobId ${jobId} to status ACCEPTED`);
+    } catch (error) {
+      console.error(`Error updating application for userId ${userId} to jobId ${jobId}:`, error);
+    }
+  }
+
+  console.log('Created applications for job postings.');
 
   // 9. Create Notifications
-  const notificationPromises = nurseUsers.map(async (nurse) => {
+  for (const user of allUsers) {
     const numNotifications = faker.number.int({ min: 1, max: 10 });
 
-    const notifications = [];
-
     for (let i = 0; i < numNotifications; i++) {
-      notifications.push(
-        prisma.notification.create({
+      try {
+        await prisma.notification.create({
           data: {
-            user: { connect: { id: nurse.id } },
+            userId: user.id,
             message: faker.lorem.sentence(),
-            timestamp: faker.date.recent({ days: 60 }), // Extended to cover more dates
+            timestamp: faker.date.recent({ days: 60 }),
           },
-        })
-      );
+        });
+
+        console.log(`Created notification for userId ${user.id}`);
+      } catch (error) {
+        console.error(`Error creating notification for userId ${user.id}:`, error);
+      }
     }
+  }
 
-    await Promise.all(notifications);
-  });
-
-  await Promise.all(notificationPromises);
-  console.log(`Created notifications for nurses.`);
-
-  // 10. Create Shifts
-  const shiftPromises = nurseUsers.map(async (nurse) => {
-    const numShifts = faker.number.int({ min: 2, max: 6 }); // Increased number for active freelancers
-
-    const shifts = [];
-
-    for (let i = 0; i < numShifts; i++) {
-      const shiftDate = faker.date.future({ years: 1 });
-      const startHour = faker.number.int({ min: 6, max: 20 }); // Shifts start between 6 AM to 8 PM
-      const shiftDuration = faker.number.int({ min: 6, max: 12 }); // Shifts last between 6 to 12 hours
-      const endHour = (startHour + shiftDuration) % 24;
-      const startPeriod = startHour >= 12 ? 'PM' : 'AM';
-      const endPeriod = endHour >= 12 ? 'PM' : 'AM';
-      const formattedStartHour = startHour % 12 === 0 ? 12 : startHour % 12;
-      const formattedEndHour = endHour % 12 === 0 ? 12 : endHour % 12;
-      const time = `${formattedStartHour}:00 ${startPeriod} - ${formattedEndHour}:00 ${endPeriod}`;
-
-      shifts.push(
-        prisma.shift.create({
-          data: {
-            user: { connect: { id: nurse.id } },
-            facility: faker.helpers.arrayElement(facilities),
-            date: shiftDate,
-            time,
-          },
-        })
-      );
-    }
-
-    await Promise.all(shifts);
-  });
-
-  await Promise.all(shiftPromises);
-  console.log(`Created upcoming shifts for nurses.`);
+  console.log('Created notifications for nurses.');
 }
 
 main()

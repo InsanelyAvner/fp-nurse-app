@@ -8,31 +8,25 @@ import Topbar from "@/components/Topbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Download, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "react-toastify";
-import { LoadingContext } from "@/app/context/LoadingContext"; // Import LoadingContext
+import { LoadingContext } from "@/app/context/LoadingContext";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Define interfaces based on Prisma schema
-interface Document {
+// Define interfaces based on the updated API response
+interface Skill {
   id: number;
-  type: string;
-  fileUrl: string;
-  uploadedAt: string;
+  name: string;
 }
 
 interface Experience {
   id: number;
-  position: string;
   facilityName: string;
+  position: string;
+  department: string;
   startDate: string | null;
   endDate: string | null;
   responsibilities: string;
-}
-
-interface Skill {
-  id: number;
-  name: string;
 }
 
 interface User {
@@ -40,21 +34,22 @@ interface User {
   firstName: string;
   lastName: string;
   email: string;
-  contactNumber: string;
-  address: string;
   dob: string | null;
   gender: string;
-  yearsOfExperience: number | null;
-  education: string | null;
-  specializations: string[];
-  languages: string[];
-  shiftPreferences: string[];
+  contactNumber: string;
+  postalCode: string;
+  citizenship: string;
+  race: string;
+  role: string;
+  specialization: string;
+  availableWorkDays: string;
+  frequencyOfWork: number;
+  preferredFacilityType: string;
+  availableWorkTiming: string;
   skills: Skill[];
   experiences: Experience[];
-  documents: Document[];
-  certifications: string[];
-  bio: string | null;
-  profilePictureUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const NurseProfilePage: React.FC = () => {
@@ -77,7 +72,11 @@ const NurseProfilePage: React.FC = () => {
       startLoading(); // Start loading
       setError(null);
       try {
-        const response = await fetch(`/api/admin/nurses/${nurseId}`);
+        const response = await fetch(`/api/admin/nurses/${nurseId}`, {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.error || "Failed to fetch nurse data.");
@@ -93,9 +92,12 @@ const NurseProfilePage: React.FC = () => {
       }
     };
 
-    fetchNurse();
+    if (nurseId) {
+      fetchNurse();
+    }
   }, [nurseId, startLoading, stopLoading]);
 
+  // Loading State
   if (isLoading) {
     return (
       <div className="flex h-screen bg-gray-50">
@@ -140,57 +142,14 @@ const NurseProfilePage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Personal Information Skeleton */}
-              <section className="mb-8">
-                <Skeleton className="h-6 w-40 rounded mb-4" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Skeleton className="h-4 w-32 rounded mb-1" />
-                    <Skeleton className="h-4 w-48 rounded" />
-                  </div>
-                  <div>
-                    <Skeleton className="h-4 w-32 rounded mb-1" />
-                    <Skeleton className="h-4 w-48 rounded" />
-                  </div>
-                  {/* Repeat for other personal info fields */}
-                </div>
-              </section>
-
-              {/* Professional Information Skeleton */}
+              {/* Skills Skeleton */}
               <section className="mb-8">
                 <Skeleton className="h-6 w-56 rounded mb-4" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <Skeleton className="h-4 w-40 rounded mb-1" />
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      <Skeleton className="h-6 w-20 rounded" />
-                      <Skeleton className="h-6 w-20 rounded" />
-                      {/* Repeat as needed */}
-                    </div>
-                  </div>
-                  {/* Repeat for other professional info fields */}
-                </div>
-              </section>
-
-              {/* Certifications Skeleton */}
-              <section className="mb-8">
-                <Skeleton className="h-6 w-40 rounded mb-4" />
-                <ul className="list-disc list-inside space-y-2">
-                  <li>
-                    <Skeleton className="h-4 w-3/4 rounded" />
-                  </li>
-                  <li>
-                    <Skeleton className="h-4 w-3/4 rounded" />
-                  </li>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  <Skeleton className="h-6 w-20 rounded" />
+                  <Skeleton className="h-6 w-20 rounded" />
                   {/* Repeat as needed */}
-                </ul>
-              </section>
-
-              {/* Bio Skeleton */}
-              <section className="mb-8">
-                <Skeleton className="h-6 w-20 rounded mb-4" />
-                <Skeleton className="h-4 w-full rounded" />
-                <Skeleton className="h-4 w-5/6 rounded mt-2" />
+                </div>
               </section>
 
               {/* Work Experiences Skeleton */}
@@ -211,28 +170,6 @@ const NurseProfilePage: React.FC = () => {
                 </div>
               </section>
 
-              {/* Documents Skeleton */}
-              <section className="mb-8">
-                <Skeleton className="h-6 w-40 rounded mb-4" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="flex items-center justify-between p-4 border rounded-lg shadow-sm">
-                    <div>
-                      <Skeleton className="h-4 w-32 rounded mb-1" />
-                      <Skeleton className="h-3 w-24 rounded" />
-                    </div>
-                    <Skeleton className="h-6 w-20 rounded" />
-                  </div>
-                  <div className="flex items-center justify-between p-4 border rounded-lg shadow-sm">
-                    <div>
-                      <Skeleton className="h-4 w-32 rounded mb-1" />
-                      <Skeleton className="h-3 w-24 rounded" />
-                    </div>
-                    <Skeleton className="h-6 w-20 rounded" />
-                  </div>
-                  {/* Repeat as needed */}
-                </div>
-              </section>
-
               {/* Additional Actions Skeleton */}
               <div className="flex justify-end space-x-4">
                 <Skeleton className="h-10 w-32 rounded" />
@@ -245,8 +182,8 @@ const NurseProfilePage: React.FC = () => {
     );
   }
 
-  // Render error state
-  if (!nurse && !isLoading) {
+  // Error State
+  if (error && !isLoading) {
     return (
       <div className="flex h-screen">
         {/* Sidebar */}
@@ -263,15 +200,19 @@ const NurseProfilePage: React.FC = () => {
 
         <div className="flex-1 flex flex-col">
           <Topbar toggleSidebar={toggleSidebar} role={userRole} />
-          {/* <main className="flex-1 flex items-center justify-center">
+          <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
             <div className="text-center">
               <p className="text-red-500 mb-4">{error || "Nurse not found."}</p>
-              <Button onClick={() => router.back()} className="flex items-center">
+              <Button
+                onClick={() => router.back()}
+                className="flex items-center justify-center"
+                aria-label="Back to Nurses List"
+              >
                 <ArrowLeft className="h-5 w-5 mr-1" />
                 Back to Nurses List
               </Button>
             </div>
-          </main> */}
+          </main>
         </div>
       </div>
     );
@@ -305,26 +246,32 @@ const NurseProfilePage: React.FC = () => {
               variant="ghost"
               className="mb-6 flex items-center text-gray-600 hover:text-gray-800"
               onClick={() => router.back()}
-              aria-label="Back to Applicant List"
+              aria-label="Back to Nurses List"
             >
               <ArrowLeft className="h-5 w-5 mr-1" />
-              Back to Applicant List
+              Back to Nurses List
             </Button>
 
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
               <div className="flex items-center">
                 <Avatar className="h-24 w-24">
-                  {nurse && nurse.profilePictureUrl ? (
-                    <AvatarImage
-                      src={nurse.profilePictureUrl}
-                      alt={`${nurse.firstName} ${nurse.lastName}`}
-                    />
+                  {nurse ? (
+                    nurse.firstName && nurse.lastName ? (
+                      <AvatarImage
+                        src={`https://api.dicebear.com/9.x/initials/svg?scale=70&seed=${encodeURIComponent(
+                          nurse.firstName + " " + nurse.lastName
+                        )}`}
+                        alt={`${nurse.firstName} ${nurse.lastName}`}
+                      />
+                    ) : (
+                      <AvatarFallback>
+                        {nurse.firstName ? nurse.firstName.charAt(0).toUpperCase() : "N"}
+                        {nurse.lastName ? nurse.lastName.charAt(0).toUpperCase() : "A"}
+                      </AvatarFallback>
+                    )
                   ) : (
-                    <AvatarFallback>
-                      {nurse ? nurse.firstName[0] : ""}
-                      {nurse ? nurse.lastName[0] : ""}
-                    </AvatarFallback>
+                    <AvatarFallback>NA</AvatarFallback>
                   )}
                 </Avatar>
                 <div className="ml-6">
@@ -334,25 +281,12 @@ const NurseProfilePage: React.FC = () => {
                   <p className="text-gray-500">{nurse?.email}</p>
                 </div>
               </div>
-              {/* Action Buttons (Optional) */}
-              <div className="mt-4 sm:mt-0 flex space-x-2">
-                {/* Example: Edit Profile Button */}
-                {/* <Button variant="primary">Edit Profile</Button> */}
-              </div>
             </div>
 
             {/* Personal Information */}
             <section className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-700 mb-4">Personal Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Contact Number</p>
-                  <p className="text-gray-800">{nurse?.contactNumber}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Address</p>
-                  <p className="text-gray-800">{nurse?.address}</p>
-                </div>
                 {nurse?.dob && (
                   <div>
                     <p className="text-sm font-medium text-gray-600">Date of Birth</p>
@@ -365,16 +299,28 @@ const NurseProfilePage: React.FC = () => {
                     <p className="text-gray-800">{nurse.gender}</p>
                   </div>
                 )}
-                {nurse?.yearsOfExperience !== null && (
+                {nurse?.contactNumber && (
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Years of Experience</p>
-                    <p className="text-gray-800">{nurse?.yearsOfExperience} years</p>
+                    <p className="text-sm font-medium text-gray-600">Contact Number</p>
+                    <p className="text-gray-800">{nurse.contactNumber}</p>
                   </div>
                 )}
-                {nurse?.education && (
+                {nurse?.postalCode && (
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Education</p>
-                    <p className="text-gray-800">{nurse.education}</p>
+                    <p className="text-sm font-medium text-gray-600">Postal Code</p>
+                    <p className="text-gray-800">{nurse.postalCode}</p>
+                  </div>
+                )}
+                {nurse?.citizenship && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Citizenship</p>
+                    <p className="text-gray-800">{nurse.citizenship}</p>
+                  </div>
+                )}
+                {nurse?.race && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Race</p>
+                    <p className="text-gray-800">{nurse.race}</p>
                   </div>
                 )}
               </div>
@@ -384,86 +330,54 @@ const NurseProfilePage: React.FC = () => {
             <section className="mb-8">
               <h2 className="text-2xl font-semibold text-gray-700 mb-4">Professional Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Specializations</p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {nurse && nurse.specializations.length > 0 ? (
-                      nurse.specializations.map((spec, idx) => (
-                        <Badge key={idx} variant="secondary" className="text-sm">
-                          {spec}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-gray-500">N/A</span>
-                    )}
+                {nurse?.specialization && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Specialization</p>
+                    <p className="text-gray-800">{nurse.specialization.replace(/_/g, " ")}</p>
                   </div>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Languages</p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {nurse && nurse.languages.length > 0 ? (
-                      nurse.languages.map((lang, idx) => (
-                        <Badge key={idx} variant="secondary" className="text-sm">
-                          {lang}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-gray-500">N/A</span>
-                    )}
+                )}
+                {nurse?.availableWorkDays && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Available Work Days</p>
+                    <p className="text-gray-800">{nurse.availableWorkDays}</p>
                   </div>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Shift Preferences</p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {nurse && nurse.shiftPreferences.length > 0 ? (
-                      nurse.shiftPreferences.map((shift, idx) => (
-                        <Badge key={idx} variant="secondary" className="text-sm">
-                          {shift}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-gray-500">N/A</span>
-                    )}
+                )}
+                {nurse?.frequencyOfWork !== undefined && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Frequency of Work</p>
+                    <p className="text-gray-800">{nurse.frequencyOfWork} times/week</p>
                   </div>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Skills</p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {nurse && nurse.skills.length > 0 ? (
-                      nurse.skills.map((skill) => (
-                        <Badge key={skill.id} variant="secondary" className="text-sm">
-                          {skill.name}
-                        </Badge>
-                      ))
-                    ) : (
-                      <span className="text-gray-500">N/A</span>
-                    )}
+                )}
+                {nurse?.preferredFacilityType && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Preferred Facility Type</p>
+                    <p className="text-gray-800">{nurse.preferredFacilityType}</p>
                   </div>
-                </div>
+                )}
+                {nurse?.availableWorkTiming && (
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Available Work Timing</p>
+                    <p className="text-gray-800">{nurse.availableWorkTiming}</p>
+                  </div>
+                )}
               </div>
             </section>
 
-            {/* Certifications */}
-            {nurse && nurse.certifications.length > 0 && (
-              <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-700 mb-4">Certifications</h2>
-                <ul className="list-disc list-inside">
-                  {nurse.certifications.map((cert, idx) => (
-                    <li key={idx} className="text-gray-800">
-                      {cert}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {/* Bio */}
-            {nurse && nurse.bio && (
-              <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-700 mb-4">Bio</h2>
-                <p className="text-gray-800">{nurse.bio}</p>
-              </section>
-            )}
+            {/* Skills */}
+            <section className="mb-8">
+              <h2 className="text-2xl font-semibold text-gray-700 mb-4">Skills</h2>
+              <div className="flex flex-wrap gap-2">
+                {nurse && nurse.skills.length > 0 ? (
+                  nurse.skills.map((skill) => (
+                    <Badge key={skill.id} variant="secondary" className="text-sm">
+                      {skill.name}
+                    </Badge>
+                  ))
+                ) : (
+                  <span className="text-gray-500">No skills listed.</span>
+                )}
+              </div>
+            </section>
 
             {/* Work Experiences */}
             {nurse && nurse.experiences.length > 0 && (
@@ -485,58 +399,12 @@ const NurseProfilePage: React.FC = () => {
                 </div>
               </section>
             )}
-
-            {/* Documents */}
-            {nurse && nurse.documents.length > 0 && (
-              <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-700 mb-4">Documents</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {nurse.documents.map((doc) => (
-                    <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg shadow-sm">
-                      <div>
-                        <p className="text-sm font-medium text-gray-700">
-                          {doc.type.charAt(0).toUpperCase() + doc.type.slice(1)}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Uploaded on {new Date(doc.uploadedAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <a
-                        href={doc.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center text-blue-600 hover:underline"
-                      >
-                        <Download className="h-4 w-4 mr-1" />
-                        Download
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Bio (Duplicate Section - Optional) */}
-            {/* If you intended to have another Bio section, ensure it's necessary. Otherwise, you can remove it. */}
-            {/* {nurse.bio && (
-              <section className="mb-8">
-                <h2 className="text-2xl font-semibold text-gray-700 mb-4">Bio</h2>
-                <p className="text-gray-800">{nurse.bio}</p>
-              </section>
-            )} */}
-
-            {/* Additional Actions */}
-            <div className="flex justify-end space-x-4">
-              {/* Example: Edit Profile Button */}
-              {/* <Button variant="primary">Edit Profile</Button> */}
-              {/* Example: Delete Profile Button */}
-              {/* <Button variant="destructive">Delete Profile</Button> */}
-            </div>
           </div>
         </main>
       </div>
     </div>
   );
 };
+
 
 export default NurseProfilePage;

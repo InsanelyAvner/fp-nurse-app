@@ -3,6 +3,7 @@
 import { NextRequest } from 'next/server';
 import { jwtVerify, JWTPayload } from 'jose';
 import prisma from '@/lib/db';
+import { Role, Specialization, ApplicationStatus } from '@prisma/client';
 
 export interface UserPayload extends JWTPayload {
   user: {
@@ -34,9 +35,10 @@ export async function getUserFromToken(req: NextRequest) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        skills: true,
         experiences: true,
-        documents: true,
+        applications: true,
+        notifications: true,
+        shifts: true,
       },
     });
 

@@ -1,8 +1,6 @@
-// File: /app/components/CreateJobDialog.tsx
-
 "use client";
 
-import React, { useState, KeyboardEvent, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,15 +22,12 @@ import {
 } from "@/components/ui/dialog";
 import { CalendarIcon, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { TimePicker } from "@/components/ui/time-picker";
+import MultiSelectCombobox from "@/components/MultiSelectCombobox";
 
 interface Skill {
   id: number;
@@ -80,10 +75,8 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
     urgent: false,
   });
 
-  const [skillInput, setSkillInput] = useState("");
-  const [filteredSkills, setFilteredSkills] = useState<Skill[]>([]);
-  const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
   const [allSkills, setAllSkills] = useState<Skill[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
 
   // State variables for TimePicker
   const [startTime, setStartTime] = useState<Date | undefined>(undefined);
@@ -105,7 +98,6 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
 
         const data: Skill[] = await response.json();
         setAllSkills(data);
-        setFilteredSkills(data);
       } catch (error) {
         console.error(error);
       }
@@ -144,10 +136,10 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
     }
 
     // Validate that start time is before end time
-    // if (startTime >= endTime) {
-    //   alert("Start time must be before end time.");
-    //   return;
-    // }
+    if (startTime >= endTime) {
+      alert("Start time must be before end time.");
+      return;
+    }
 
     // Format the times to "HH:MM AM/PM"
     const formatTime = (date: Date) => {
@@ -177,68 +169,7 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
       urgent: false,
     });
     setSelectedSkills([]);
-    setSkillInput("");
-    setFilteredSkills(allSkills);
-    setStartTime(undefined);
-    setEndTime(undefined);
     alert("Job created successfully!");
-  };
-
-  const handleSkillInputChange = (value: string) => {
-    setSkillInput(value);
-    if (value === "") {
-      setFilteredSkills(allSkills.filter((s) => !selectedSkills.includes(s)));
-    } else {
-      setFilteredSkills(
-        allSkills
-          .filter((s) => s.name.toLowerCase().includes(value.toLowerCase()))
-          .filter((s) => !selectedSkills.includes(s))
-      );
-    }
-  };
-
-  const handleSkillSelect = (skill: Skill) => {
-    if (!selectedSkills.find((s) => s.id === skill.id)) {
-      setSelectedSkills([...selectedSkills, skill]);
-    }
-    setSkillInput("");
-    setFilteredSkills(
-      allSkills.filter((s) => !selectedSkills.find((sel) => sel.id === s.id))
-    );
-  };
-
-  const handleSkillRemove = (skill: Skill) => {
-    const updatedSkills = selectedSkills.filter((s) => s.id !== skill.id);
-    setSelectedSkills(updatedSkills);
-    setFilteredSkills(
-      allSkills.filter((s) => !updatedSkills.find((sel) => sel.id === sel.id))
-    );
-  };
-
-  const handleSkillKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && skillInput.trim() !== "") {
-      e.preventDefault();
-      const skillName = skillInput.trim();
-      const existingSkill = allSkills.find(
-        (s) => s.name.toLowerCase() === skillName.toLowerCase()
-      );
-
-      if (
-        existingSkill &&
-        !selectedSkills.find((s) => s.id === existingSkill.id)
-      ) {
-        setSelectedSkills([...selectedSkills, existingSkill]);
-      } else if (!existingSkill) {
-        alert("Skill not found.");
-      }
-
-      setSkillInput("");
-      setFilteredSkills(
-        allSkills.filter(
-          (s) => !selectedSkills.find((sel) => sel.id === sel.id)
-        )
-      );
-    }
   };
 
   return (
@@ -440,60 +371,19 @@ const CreateJobDialog: React.FC<CreateJobDialogProps> = ({
             />
           </div>
 
-          {/* Required Skills with Autocomplete and Custom Input */}
+          {/* Required Skills with Multi-Select Combobox */}
           <div>
             <Label
               htmlFor="requiredSkills"
-              className="block font-medium text-gray-700"
+              className="block font-medium text-gray-700 mb-1"
             >
               Required Skills
             </Label>
-            <div className="relative mt-1">
-              <Input
-                id="requiredSkills"
-                type="text"
-                value={skillInput}
-                onChange={(e) => handleSkillInputChange(e.target.value)}
-                onKeyDown={handleSkillKeyDown}
-                placeholder="Type to add skills or press Enter to add"
-                autoComplete="off"
-                className="pr-10"
-              />
-              {/* Suggestions Dropdown */}
-              {skillInput && filteredSkills.length > 0 && (
-                <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
-                  {filteredSkills.map((skill) => (
-                    <li
-                      key={skill.id}
-                      onClick={() => handleSkillSelect(skill)}
-                      className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                    >
-                      {skill.name}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            {/* Display Selected Skills */}
-            <div className="flex flex-wrap gap-2 mt-2">
-              {selectedSkills.map((skill) => (
-                <Badge
-                  key={skill.id}
-                  variant="secondary"
-                  className="flex items-center text-sm"
-                >
-                  {skill.name}
-                  <button
-                    type="button"
-                    onClick={() => handleSkillRemove(skill)}
-                    className="ml-2 text-gray-500 hover:text-gray-700 focus:outline-none"
-                    aria-label={`Remove ${skill.name}`}
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
+            <MultiSelectCombobox
+              allSkills={allSkills}
+              selectedSkills={selectedSkills}
+              setSelectedSkills={setSelectedSkills}
+            />
           </div>
 
           {/* Job Description */}

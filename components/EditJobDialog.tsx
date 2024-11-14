@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState, KeyboardEvent, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,7 +33,8 @@ import { cn } from "@/lib/utils";
 import { format, parse } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { TimePicker } from "@/components/ui/time-picker";
-import { Job } from "@/app/types"; 
+import { Job } from "@/app/types";
+import MultiSelectCombobox from "@/components/MultiSelectCombobox";
 
 interface Skill {
   id: number;
@@ -47,7 +48,6 @@ interface EditJobDialogProps {
   onUpdate: (updatedJob: Job) => Promise<void>;
 }
 
-
 const EditJobDialog: React.FC<EditJobDialogProps> = ({
   open,
   onOpenChange,
@@ -55,7 +55,6 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
   onUpdate,
 }) => {
   const [editingJob, setEditingJob] = useState<Job | null>(null);
-  const [skillInput, setSkillInput] = useState("");
   const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
   const [allSkills, setAllSkills] = useState<Skill[]>([]);
 
@@ -142,62 +141,6 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
     }
   }, [open, job]);
 
-  // Compute filteredSkills based on skillInput and selectedSkills
-  const filteredSkills = useMemo(() => {
-    if (skillInput.trim() === "") {
-      return allSkills.filter(
-        (skill) => !selectedSkills.some((s) => s.id === skill.id)
-      );
-    }
-    return allSkills.filter(
-      (skill) =>
-        skill.name.toLowerCase().includes(skillInput.toLowerCase()) &&
-        !selectedSkills.some((s) => s.id === skill.id)
-    );
-  }, [allSkills, selectedSkills, skillInput]);
-
-  const handleSkillInputChange = (value: string) => {
-    setSkillInput(value);
-  };
-
-  const handleSkillSelect = (skill: Skill) => {
-    if (!selectedSkills.find((s) => s.id === skill.id)) {
-      setSelectedSkills([...selectedSkills, skill]);
-      console.log(`Selected Skill: ${skill.name}`); // Debugging Log
-    }
-    setSkillInput("");
-  };
-
-  const handleSkillRemove = (skill: Skill) => {
-    const updatedSkills = selectedSkills.filter((s) => s.id !== skill.id);
-    setSelectedSkills(updatedSkills);
-    console.log(`Removed Skill: ${skill.name}`); // Debugging Log
-  };
-
-  const handleSkillKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && skillInput.trim() !== "") {
-      e.preventDefault();
-      const skillName = skillInput.trim();
-      const existingSkill = allSkills.find(
-        (s) => s.name.toLowerCase() === skillName.toLowerCase()
-      );
-
-      if (
-        existingSkill &&
-        !selectedSkills.some((s) => s.id === existingSkill.id)
-      ) {
-        setSelectedSkills([...selectedSkills, existingSkill]);
-        console.log(`Skill Added via Enter: ${existingSkill.name}`); // Debugging Log
-      } else if (!existingSkill) {
-        alert("Skill not found. Please select from the list.");
-      } else {
-        alert("Skill already selected.");
-      }
-
-      setSkillInput("");
-    }
-  };
-
   const handleUpdateJob = () => {
     if (!editingJob) return;
 
@@ -216,13 +159,6 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
       alert("Please fill out all required fields.");
       return;
     }
-
-    // Validate that start time is before end time
-    if (startTime >= endTime) {
-      alert("Start time must be before end time.");
-      return;
-    }
-
     // Format the times to "HH:MM AM/PM"
     const formatTime = (date: Date) => {
       return format(date, "hh:mm aa");
@@ -242,7 +178,6 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
     onOpenChange(false);
     setEditingJob(null);
     setSelectedSkills([]);
-    setSkillInput("");
     setStartTime(undefined);
     setEndTime(undefined);
     alert("Job updated successfully!");
@@ -363,6 +298,7 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
               </Select>
             </div>
 
+            {/* Date Picker */}
             <div className="flex-1">
               <Label
                 htmlFor="edit-date"
@@ -398,48 +334,35 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
               </Popover>
             </div>
 
-            {/* Date Picker */}
-            <div className="flex flex-col sm:flex-row sm:space-x-6">
-              {/* Date */}
+            {/* Time Picker */}
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:space-x-4">
+                {/* Start Time */}
+                <div className="flex-1">
+                  <Label
+                    htmlFor="edit-startTime"
+                    className="block text-sm text-gray-600"
+                  >
+                    Start Time
+                  </Label>
+                  <TimePicker
+                    setDate={setStartTime}
+                    date={startTime}
+                  />
+                </div>
 
-              {/* Time Pickers */}
-              <div className="flex-1 mt-4 sm:mt-0">
-                <Label
-                  htmlFor="edit-time"
-                  className="block font-medium text-gray-700"
-                >
-                  Time
-                </Label>
-                <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:space-x-4">
-                    {/* Start Time */}
-                    <div className="flex-1">
-                      <Label
-                        htmlFor="edit-startTime"
-                        className="block text-sm text-gray-600"
-                      >
-                        Start Time
-                      </Label>
-                      <TimePicker
-                        setDate={setStartTime}
-                        date={startTime}
-                      />
-                    </div>
-
-                    {/* End Time */}
-                    <div className="flex-1">
-                      <Label
-                        htmlFor="edit-endTime"
-                        className="block text-sm text-gray-600"
-                      >
-                        End Time
-                      </Label>
-                      <TimePicker
-                        setDate={setEndTime}
-                        date={endTime}
-                      />
-                    </div>
-                  </div>
+                {/* End Time */}
+                <div className="flex-1">
+                  <Label
+                    htmlFor="edit-endTime"
+                    className="block text-sm text-gray-600"
+                  >
+                    End Time
+                  </Label>
+                  <TimePicker
+                    setDate={setEndTime}
+                    date={endTime}
+                  />
                 </div>
               </div>
             </div>
@@ -464,7 +387,7 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
               />
             </div>
 
-            {/* Required Skills with Autocomplete and Custom Input */}
+            {/* Required Skills with Multi-Select Combobox */}
             <div>
               <Label
                 htmlFor="edit-requiredSkills"
@@ -472,75 +395,11 @@ const EditJobDialog: React.FC<EditJobDialogProps> = ({
               >
                 Required Skills
               </Label>
-              <div className="relative mt-1">
-                <Input
-                  id="edit-requiredSkills"
-                  type="text"
-                  value={skillInput}
-                  onChange={(e) => handleSkillInputChange(e.target.value)}
-                  onKeyDown={handleSkillKeyDown}
-                  placeholder="Type to add skills or press Enter to add"
-                  autoComplete="off"
-                  className="pr-10"
-                />
-                {/* Suggestions Dropdown */}
-                {skillInput && filteredSkills.length > 0 && (
-                  <ul className="absolute z-10 w-full bg-white border border-gray-200 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
-                    {filteredSkills.map((skill) => (
-                      <li
-                        key={skill.id}
-                        onClick={() => handleSkillSelect(skill)}
-                        className="px-4 py-2 cursor-pointer hover:bg-gray-100"
-                      >
-                        {skill.name}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {/* Add Button for Non-Existing Skills */}
-                {skillInput.trim() !== "" &&
-                  !allSkills.some(
-                    (s) =>
-                      s.name.toLowerCase() === skillInput.trim().toLowerCase()
-                  ) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const skillName = skillInput.trim();
-                        if (skillName === "") return;
-
-                        // Optionally, handle custom skill creation here
-                        alert(
-                          `Skill "${skillName}" not found. Please select from the list.`
-                        );
-                        setSkillInput("");
-                      }}
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-[#9d2235] text-white px-2 py-1 rounded-md text-sm hover:bg-[#7a172f]"
-                    >
-                      Add
-                    </button>
-                  )}
-              </div>
-              {/* Display Selected Skills */}
-              <div className="flex flex-wrap gap-2 mt-2">
-                {selectedSkills.map((skill) => (
-                  <Badge
-                    key={skill.id}
-                    variant="secondary"
-                    className="flex items-center text-sm"
-                  >
-                    {skill.name}
-                    <button
-                      type="button"
-                      onClick={() => handleSkillRemove(skill)}
-                      className="ml-2 text-gray-500 hover:text-gray-700 focus:outline-none"
-                      aria-label={`Remove ${skill.name}`}
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
+              <MultiSelectCombobox
+                allSkills={allSkills}
+                selectedSkills={selectedSkills}
+                setSelectedSkills={setSelectedSkills}
+              />
             </div>
 
             {/* Job Description */}

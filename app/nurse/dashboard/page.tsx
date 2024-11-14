@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
@@ -14,8 +14,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserContext } from "@/app/context/UserContext";
-import { LoadingContext } from "@/app/context/LoadingContext"; // Import LoadingContext
+import { LoadingContext } from "@/app/context/LoadingContext";
 
+// Importing date-fns for better date formatting (optional but recommended)
+import { format } from "date-fns";
+
+// Define the Job interface
 interface Job {
   id: number;
   title: string;
@@ -30,17 +34,29 @@ interface Job {
   department: string;
 }
 
+// Define the Notification interface
 interface Notification {
   id: number;
   message: string;
   timestamp: string;
 }
 
+// Updated Shift interface to match API response
 interface Shift {
   id: number;
   facility: string;
-  date: string;
-  time: string;
+  startDate: string; // e.g., "2025-05-21T16:00:00.000Z"
+  endDate: string;
+  startTime: string; // e.g., "7:00 AM"
+  endTime: string; // e.g., "4:00 PM"
+  mealBreak: boolean;
+  assignedDepartment: string;
+  assignedSupervisor: string;
+  supervisorRating: number;
+  commentsOnPerformance: string;
+  recommendToRehire: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 const NurseDashboardComponent: React.FC = () => {
@@ -49,6 +65,7 @@ const NurseDashboardComponent: React.FC = () => {
   const router = useRouter();
 
   const [jobMatches, setJobMatches] = useState<Job[]>([]);
+  const [allJobs, setAllJobs] = useState<Job[]>([]); // New state for all available jobs
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [upcomingShifts, setUpcomingShifts] = useState<Shift[]>([]);
 
@@ -77,10 +94,14 @@ const NurseDashboardComponent: React.FC = () => {
       startLoading(); // Start loading
 
       try {
-        // Fetch jobs, notifications, and shifts in parallel
-        const [jobsResponse, notificationsResponse, shiftsResponse] =
+        // Fetch matched jobs, all jobs, notifications, and shifts in parallel
+        const [matchedJobsResponse, allJobsResponse, notificationsResponse, shiftsResponse] =
           await Promise.all([
-            fetch("/api/nurse/jobs", {
+            fetch("/api/nurse/matched-jobs", {
+              method: "GET",
+              credentials: "include",
+            }),
+            fetch("/api/jobs?hideAppliedJobs=true", { // New API endpoint for all jobs
               method: "GET",
               credentials: "include",
             }),
@@ -95,22 +116,33 @@ const NurseDashboardComponent: React.FC = () => {
           ]);
 
         if (
-          !jobsResponse.ok ||
+          !matchedJobsResponse.ok ||
+          !allJobsResponse.ok ||
           !notificationsResponse.ok ||
           !shiftsResponse.ok
         ) {
           throw new Error("Failed to fetch data");
         }
 
-        const [jobsData, notificationsData, shiftsData] = await Promise.all([
-          jobsResponse.json(),
+        const [matchedJobsData, allJobsData, notificationsData, shiftsData] = await Promise.all([
+          matchedJobsResponse.json(),
+          allJobsResponse.json(),
           notificationsResponse.json(),
           shiftsResponse.json(),
         ]);
 
-        setJobMatches(jobsData);
-        setNotifications(notificationsData);
-        setUpcomingShifts(shiftsData);
+        // Debugging: Log the fetched data to understand its structure
+        console.log("Matched Jobs Data:", matchedJobsData);
+        console.log("All Jobs Data:", allJobsData);
+        console.log("Notifications Data:", notificationsData);
+        console.log("Shifts Data:", shiftsData);
+
+        // Set jobMatches to matchedJobsData
+        setJobMatches(matchedJobsData || []);
+        // Set allJobs to allJobsData
+        setAllJobs(allJobsData || []);
+        setNotifications(notificationsData || []);
+        setUpcomingShifts(shiftsData.shifts || []);
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -283,16 +315,16 @@ const NurseDashboardComponent: React.FC = () => {
                   />
                 </div>
 
-                {/* Job Matches */}
+                {/* Recommended Jobs */}
                 <Card className="mb-8">
                   <CardHeader>
                     <CardTitle>Recommended Jobs for You</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {jobMatches.length > 0 ? (
+                    {allJobs.length > 0 ? ( // Display all available jobs
                       <ScrollArea className="h-[325px]">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {jobMatches.map((job) => (
+                          {allJobs.map((job) => (
                             <JobCard
                               key={job.id}
                               job={job}
@@ -303,7 +335,7 @@ const NurseDashboardComponent: React.FC = () => {
                       </ScrollArea>
                     ) : (
                       <p className="text-sm text-gray-500">
-                        No job matches found.
+                        No available jobs found.
                       </p>
                     )}
                   </CardContent>
@@ -311,6 +343,7 @@ const NurseDashboardComponent: React.FC = () => {
 
                 {/* Notifications and Upcoming Shifts */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Recent Notifications */}
                   <Card>
                     <CardHeader>
                       <CardTitle>Recent Notifications</CardTitle>
@@ -341,6 +374,8 @@ const NurseDashboardComponent: React.FC = () => {
                       )}
                     </CardContent>
                   </Card>
+
+                  {/* Upcoming Shifts */}
                   <Card>
                     <CardHeader>
                       <CardTitle>Upcoming Shifts</CardTitle>
@@ -354,7 +389,9 @@ const NurseDashboardComponent: React.FC = () => {
                                 {shift.facility}
                               </p>
                               <p className="text-xs text-gray-500">
-                                {shift.date} • {shift.time}
+                                {/* Formatting the date for better readability */}
+                                {format(new Date(shift.startDate), "PPP")} •{" "}
+                                {shift.startTime} - {shift.endTime}
                               </p>
                             </div>
                           ))}

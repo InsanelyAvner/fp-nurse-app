@@ -12,8 +12,9 @@ interface ActionRequestBody {
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string; applicantId: string } }
+  props: { params: Promise<{ id: string; applicantId: string }> }
 ): Promise<NextResponse> {
+  const params = await props.params;
   const { id, applicantId } = params;
 
   // Validate the IDs

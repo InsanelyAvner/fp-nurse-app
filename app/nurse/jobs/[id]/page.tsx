@@ -1,18 +1,31 @@
-// JobDetailsPageComponent.tsx
+// components/JobDetailsPageComponent.tsx
 
-'use client';
+"use client";
 
-import React, { useEffect, useState, useContext } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import Sidebar from '@/components/Sidebar';
-import Topbar from '@/components/Topbar';
-import { Button } from '@/components/ui/button';
-import { Calendar, Clock, DollarSign, Briefcase, ChevronLeft } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import Image from 'next/image';
-import { LoadingContext } from '@/app/context/LoadingContext'; // Import LoadingContext
+import React, { useEffect, useState, useContext } from "react";
+import { useRouter, useParams } from "next/navigation";
+import Sidebar from "@/components/Sidebar";
+import Topbar from "@/components/Topbar";
+import { Button } from "@/components/ui/button";
+import {
+  Calendar,
+  Clock,
+  DollarSign,
+  Briefcase,
+  ChevronLeft,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import Image from "next/image";
+import { LoadingContext } from "@/app/context/LoadingContext";
+import { UserContext } from "@/app/context/UserContext";
+import { toast } from "react-toastify";
 
 interface Job {
   id: number;
@@ -26,12 +39,7 @@ interface Job {
   shiftType: string;
   department: string;
   description: string;
-  responsibilities: string[];
-  facilityInfo: {
-    name: string;
-    address: string;
-    image: string;
-  };
+  // Add other fields as necessary
 }
 
 const JobDetailsPageComponent: React.FC = () => {
@@ -39,31 +47,32 @@ const JobDetailsPageComponent: React.FC = () => {
   const params = useParams();
   const id = params?.id as string | undefined;
   const [job, setJob] = useState<Job | null>(null);
+  const { user } = useContext(UserContext);
 
-  const { isLoading, startLoading, stopLoading } = useContext(LoadingContext); // Use LoadingContext
+  const { isLoading, startLoading, stopLoading } = useContext(LoadingContext);
 
   useEffect(() => {
     const fetchJob = async () => {
       if (!id) return;
 
-      startLoading(); // Start loading
+      startLoading();
 
       try {
         const response = await fetch(`/api/jobs/${id}`, {
-          credentials: 'include', // Ensure cookies are sent
+          credentials: "include",
         });
         if (response.ok) {
           const jobData: Job = await response.json();
           setJob(jobData);
         } else {
           setJob(null);
-          console.error('Failed to fetch job listing');
+          console.error("Failed to fetch job listing");
         }
       } catch (error) {
-        console.error('Failed to fetch job listing:', error);
+        console.error("Failed to fetch job listing:", error);
         setJob(null);
       } finally {
-        stopLoading(); // End loading
+        stopLoading();
       }
     };
 
@@ -77,12 +86,41 @@ const JobDetailsPageComponent: React.FC = () => {
   // Handler for navigating back to job listings
   const handleBackToListings = async () => {
     try {
-      await router.push('/nurse/jobs/search');
-      // In Next.js App Router, router.push is asynchronous and can be awaited
-      // The new page will handle its own loading state
+      await router.push("/nurse/jobs/search");
     } catch (error) {
-      console.error('Navigation error:', error);
-      stopLoading(); // Stop loading in case of error
+      console.error("Navigation error:", error);
+      stopLoading();
+    }
+  };
+
+  // Handler for applying to the job
+  const handleApply = async () => {
+    if (!user || !job) {
+      toast.error("User or job information is missing.");
+      return;
+    }
+
+    startLoading();
+
+    try {
+      const response = await fetch(`/api/jobs/${job.id}/apply`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        toast.success("Application submitted successfully!");
+        // Optionally, redirect or update the UI
+        router.push("/nurse/applications");
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || "Failed to submit application.");
+      }
+    } catch (error) {
+      console.error("Failed to apply for job:", error);
+      toast.error("An error occurred while applying for the job.");
+    } finally {
+      stopLoading();
     }
   };
 
@@ -109,6 +147,7 @@ const JobDetailsPageComponent: React.FC = () => {
             {/* Conditional rendering for loading, job not found, or job details */}
             {isLoading ? (
               <Card className="shadow-lg rounded-lg overflow-hidden">
+                {/* Skeleton Loading State */}
                 <CardHeader className="p-6">
                   <Skeleton className="h-10 w-1/2 mb-4" />
                   <Skeleton className="h-6 w-1/3" />
@@ -121,6 +160,7 @@ const JobDetailsPageComponent: React.FC = () => {
               </Card>
             ) : job ? (
               <Card className="shadow-lg rounded-lg overflow-hidden">
+                {/* Job Details */}
                 <div className="relative h-56 md:h-36">
                   <Image
                     src="/images/bg.png"
@@ -139,10 +179,16 @@ const JobDetailsPageComponent: React.FC = () => {
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                     <div>
-                      <CardTitle className="text-2xl font-bold text-gray-800">{job.title}</CardTitle>
+                      <CardTitle className="text-2xl font-bold text-gray-800">
+                        {job.title}
+                      </CardTitle>
                       <p className="text-gray-600 mt-1">{job.facility}</p>
                     </div>
-                    {job.urgent && <Badge variant="destructive" className="mt-4 md:mt-0">Urgent Hiring</Badge>}
+                    {job.urgent && (
+                      <Badge variant="destructive" className="mt-4 md:mt-0">
+                        Urgent Hiring
+                      </Badge>
+                    )}
                   </div>
 
                   <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -156,21 +202,14 @@ const JobDetailsPageComponent: React.FC = () => {
                     </div>
                     <div className="flex items-center text-gray-600">
                       <Briefcase className="h-5 w-5 mr-2" />
-                      <span className="font-medium">Shift Type:&nbsp;</span> {job.shiftType}
+                      <span className="font-medium">Shift Type:&nbsp;</span>{" "}
+                      {job.shiftType}
                     </div>
                     <div className="flex items-center text-gray-600">
                       <DollarSign className="h-5 w-5 mr-2" />
-                      <span className="font-medium">Pay Rate:&nbsp;</span> {job.payRate}
+                      <span className="font-medium">Pay Rate:&nbsp;</span>{" "}
+                      {job.payRate}
                     </div>
-                    {/* 
-                    <div className="flex items-start text-gray-600">
-                      <MapPin className="h-5 w-5 mr-2 mt-1" />
-                      <div>
-                        <span className="font-medium">Location:&nbsp;</span>
-                        <p>{job.facilityInfo.address == '' ? "Farrer Park Hospital" : job.facilityInfo.address }</p>
-                      </div>
-                    </div> 
-                    */}
                     <div className="flex items-start text-gray-600">
                       <Briefcase className="h-5 w-5 mr-2 mt-1" />
                       <div>
@@ -181,39 +220,41 @@ const JobDetailsPageComponent: React.FC = () => {
                   </div>
 
                   <div className="mt-6">
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">Job Description</h3>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                      Job Description
+                    </h3>
                     <p className="text-gray-700">{job.description}</p>
                   </div>
 
-                  {/* 
                   <div className="mt-6">
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">Responsibilities</h3>
-                    <ul className="list-disc list-inside text-gray-700 space-y-1">
-                      {job.responsibilities.map((item, index) => (
-                        <li key={index}>{item}</li>
-                      ))}
-                    </ul>
-                  </div> 
-                  */}
-
-                  <div className="mt-6">
-                    <h3 className="text-xl font-semibold text-gray-800 mb-2">Required Skills & Certifications</h3>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                      Required Skills & Certifications
+                    </h3>
                     <div className="flex flex-wrap gap-2">
                       {job.requiredSkills.map((skill, index) => (
-                        <Badge key={index} variant="secondary">{skill}</Badge>
+                        <Badge key={index} variant="secondary">
+                          {skill}
+                        </Badge>
                       ))}
                     </div>
                   </div>
 
                   <div className="mt-8">
-                    <Button className="w-full md:w-auto bg-[#9d2235] hover:bg-[#7a172f] text-white">Apply Now</Button>
+                    <Button
+                      className="w-full md:w-auto bg-[#9d2235] hover:bg-[#7a172f] text-white"
+                      onClick={handleApply}
+                    >
+                      Apply Now
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
             ) : (
               <div className="text-center py-16 bg-white rounded-lg shadow-sm">
                 <p className="text-2xl text-gray-600">Job not found.</p>
-                <p className="text-gray-500 mt-2">Try checking the job ID or returning to the job listings.</p>
+                <p className="text-gray-500 mt-2">
+                  Try checking the job ID or returning to the job listings.
+                </p>
               </div>
             )}
           </div>

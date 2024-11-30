@@ -30,7 +30,7 @@ interface Job {
 
 export async function GET(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   const { id } = await context.params;
   const jobId = parseInt(id, 10);
@@ -92,7 +92,7 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   const { id } = await context.params;
   const jobId = parseInt(id, 10);
@@ -229,9 +229,9 @@ export async function PUT(
 // DELETE function
 export async function DELETE(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
-  const { id } = context.params;
+  const { id } = (await context.params);
   const jobId = parseInt(id, 10);
 
   if (isNaN(jobId)) {

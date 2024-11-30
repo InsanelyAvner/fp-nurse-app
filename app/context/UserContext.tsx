@@ -35,11 +35,18 @@ export const UserContextProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Fetch user info once when the provider mounts
     const fetchUser = async () => {
-      const response = await fetch('/api/nurse/me');
-      const data = await response.json();
-      setUser(data);
+      try {
+        const response = await fetch('/api/nurse/me');
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data);
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        setUser(null);
+      }
     };
 
     fetchUser();

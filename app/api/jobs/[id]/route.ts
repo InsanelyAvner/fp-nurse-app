@@ -231,7 +231,7 @@ export async function DELETE(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
-  const { id } = (await context.params);
+  const { id } = await context.params;
   const jobId = parseInt(id, 10);
 
   if (isNaN(jobId)) {
@@ -255,7 +255,18 @@ export async function DELETE(
       return NextResponse.json({ message: 'Job not found' }, { status: 404 });
     }
 
-    await prisma.job.delete({ where: { id: jobId } });
+    // Use transaction to delete applications and job
+    await prisma.$transaction(async (tx) => {
+      // First delete all applications for this job
+      await tx.application.deleteMany({
+        where: { jobId }
+      });
+
+      // Then delete the job itself
+      await tx.job.delete({
+        where: { id: jobId }
+      });
+    });
 
     return NextResponse.json({ message: 'Job deleted successfully' }, { status: 200 });
   } catch (error: any) {

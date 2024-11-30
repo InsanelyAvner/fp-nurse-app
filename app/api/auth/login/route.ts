@@ -1,5 +1,5 @@
 import { SignJWT } from "jose";
-import cookie from "cookie";
+import * as cookie from 'cookie';
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import bcrypt from "bcryptjs";

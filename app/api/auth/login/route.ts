@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     const tokenPayload = {
       id: user.id,
       email: user.email,
-      name: user.name,
+      name: `${user.firstName} ${user.lastName}`,
       role: user.role,
     };
 

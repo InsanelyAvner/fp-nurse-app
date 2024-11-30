@@ -1,18 +1,21 @@
 // app/api/nurse/dashboard/route.ts
 
-import prisma from '@/lib/db';
-import { cookies } from 'next/headers';
-import { NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
+import prisma from "@/lib/db";
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
+import { jwtVerify } from "jose";
 
 // Helper function to verify JWT
 async function verifyJWT(token: string, secret: string) {
   try {
-    const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
+    const { payload } = await jwtVerify(
+      token,
+      new TextEncoder().encode(secret)
+    );
     return payload;
   } catch (error) {
-    console.error('JWT verification failed:', error);
-    throw new Error('Invalid token');
+    console.error("JWT verification failed:", error);
+    throw new Error("Invalid token");
   }
 }
 
@@ -20,15 +23,17 @@ export async function GET() {
   try {
     // Retrieve cookies to access the JWT token
     const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value;
+    const token = cookieStore.get("token")?.value;
 
     if (!token) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
     // Verify the JWT token using jose
     const secret = process.env.JWT_SECRET as string;
-    const decoded = await verifyJWT(token, secret) as { user: { id: number; role: string } };
+    const decoded = (await verifyJWT(token, secret)) as {
+      user: { id: number; role: string };
+    };
     const userId = decoded.user.id;
 
     // Fetch Jobs matched for the nurse
@@ -37,10 +42,10 @@ export async function GET() {
         applications: {
           some: {
             userId: userId,
-            status: 'APPLIED',
+            status: "APPLIED",
           },
         },
-        status: 'ACTIVE',
+        status: "ACTIVE",
       },
       include: {
         requiredSkills: {
@@ -58,8 +63,14 @@ export async function GET() {
       id: job.id,
       title: job.title,
       facility: job.facility,
-      date: job.startDateTime.toISOString().split('T')[0],
-      time: `${job.startDateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${job.endDateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      date: job.startDateTime.toISOString().split("T")[0],
+      time: `${job.startDateTime.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })} - ${job.endDateTime.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })}`,
       payRate: job.payRate,
       urgent: job.urgent,
       requiredSkills: job.requiredSkills.map((skill) => skill.name),
@@ -69,7 +80,7 @@ export async function GET() {
     // Fetch Notifications for the nurse
     const notifications = await prisma.notification.findMany({
       where: { userId: userId },
-      orderBy: { timestamp: 'desc' },
+      orderBy: { timestamp: "desc" },
       take: 5,
     });
 
@@ -84,11 +95,11 @@ export async function GET() {
     const shifts = await prisma.shift.findMany({
       where: {
         userId: userId,
-        date: {
+        startDate: {
           gte: new Date(),
         },
       },
-      orderBy: { date: 'asc' },
+      orderBy: { startDate: "asc" },
       take: 5,
     });
 
@@ -96,8 +107,8 @@ export async function GET() {
     const transformedShifts = shifts.map((shift) => ({
       id: shift.id,
       facility: shift.facility,
-      date: shift.date.toISOString().split('T')[0],
-      time: shift.time,
+      date: shift.startDate.toISOString().split("T")[0],
+      time: `${shift.startTime} - ${shift.endTime}`,
     }));
 
     // Respond with all fetched data
@@ -107,8 +118,11 @@ export async function GET() {
       upcomingShifts: transformedShifts,
     });
   } catch (error) {
-    console.error('Dashboard data fetching error:', error);
-    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+    console.error("Dashboard data fetching error:", error);
+    return NextResponse.json(
+      { message: "Internal Server Error" },
+      { status: 500 }
+    );
   } finally {
     await prisma.$disconnect();
   }

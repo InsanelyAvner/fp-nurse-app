@@ -12,6 +12,12 @@ export const config = {
   },
 };
 
+interface Skill {
+  id: number;
+  name: string;
+}
+
+
 // Extend the UserResponse interface to include skills and dob
 interface UserResponse {
   id: number;
